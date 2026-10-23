@@ -40,6 +40,14 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     error SC_TooLate();
     error SC_InvalidAmounts();
 
+    // ── Bonus C1/C5 (P3) ──
+    /// @notice claimPendingInterest khi không có lãi chờ.
+    error SC_NothingPending();
+    /// @notice emergencyWithdraw khi hệ thống KHÔNG pause.
+    error SC_SystemNotPaused();
+    /// @notice emergencyWithdraw khi pause chưa đủ 7 ngày (C5).
+    error SC_EmergencyNotReady();
+
     // ═══════════════════════════ Types ═══════════════════════════
 
     /// @notice Sản phẩm tiết kiệm của ngân hàng (rate/tenor/min/max/penalty).
@@ -105,6 +113,21 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     event PlanEnabled(uint256 indexed planId, bool enabled);
     event PenaltyCharged(uint256 indexed depositId, address indexed user, uint256 penalty);
 
+    // ── Bonus C1: lãi bị trì hoãn khi vault thiếu ──
+    event InterestDeferred(uint256 indexed depositId, address indexed user, uint256 interest);
+    event PendingInterestClaimed(address indexed user, uint256 amount);
+
+    // ── Bonus C4: top-up ──
+    event DepositToppedUp(
+        uint256 indexed depositId,
+        address indexed user,
+        uint256 amount,
+        uint256 newPrincipal
+    );
+
+    // ── Bonus C5: emergency withdraw ──
+    event EmergencyWithdrawn(uint256 indexed depositId, address indexed user, uint256 principal);
+
     // ═══════════════════════════ Constants ═══════════════════════════
 
     // ── Biến thể cá nhân AT190234: A=4, B=3 ──
@@ -136,6 +159,10 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
 
     mapping(uint256 planId => Plan) private _plans;
     mapping(uint256 depositId => DepositInfo) private _deposits;
+
+    /// @notice C1: lãi NỢ người dùng chưa nhận được (vault thiếu tại maturity).
+    ///         Khoản này VẪN được tính vào `totalOwedInterest` — bank không thoái thác.
+    mapping(address user => uint256 amount) public pendingInterestOf;
 
     // ═══════════════════════════ Modifiers ═══════════════════════════
 
@@ -275,9 +302,11 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     // ═══════════════════════════ User flow 2: withdrawAtMaturity ═══════════════════════════
 
     /// @notice User rút principal + lãi (lãi trả từ vault) khi đủ maturityAt.
-    /// @dev Rule "#vault không đủ → revert" (base spec). C1 ở P3 sẽ đổi thành defer.
+    /// @dev C1: nếu VAULT KHÔNG ĐỦ LÃI → trả principal đầy đủ, lãi chuyển vào
+    ///      `pendingInterestOf` để user claim sau (T3.1) — bank vẫn NỢ (không giảm
+    ///      `totalOwedInterest` khi defer). Nếu đủ → trả lãi + giảm owed (C2).
     ///      CEI: set status + burn NFT TRƯỚC khi gọi external (chặn reentrancy + double withdraw).
-    /// @return paidInterest số lãi user thực nhận (rounding down — D9).
+    /// @return paidInterest số lãi user thực nhận NGAY (0 nếu defer — D9).
     function withdrawAtMaturity(uint256 depositId)
         external
         nonReentrant
@@ -297,14 +326,40 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         _burn(depositId); // D1: certificate đã tất toán → burn
 
         if (interest != 0) {
-            // l_base base: vaultiếu lãi → revert (lỗi surface từ VM_InsufficientBalance)
-            vault.payInterest(depositor, interest);
+            if (vault.getVaultBalance() >= interest) {
+                // ── Path A: vault đủ → trả lãi ngay, giải ngân cam kết (C2) ──
+                vault.payInterest(depositor, interest);
+                vault.decreaseOwedInterest(interest);
+                paidInterest = interest;
+            } else {
+                // ── Path B (C1): vault thiếu → PRINCIPAL vẫn trả đủ;
+                //    lãi ghi nợ vào pending, owed GIỮ NGUYÊN (bank còn nợ user)
+                pendingInterestOf[depositor] += interest;
+                emit InterestDeferred(depositId, depositor, interest);
+            }
         }
-        vault.decreaseOwedInterest(interest); // C2: giải ngân cam kết lãi
         token.safeTransfer(depositor, principal);
 
         emit Withdrawn(depositId, depositor, principal, interest, false);
-        return interest;
+        return paidInterest;
+    }
+
+    // ═══════════════════════════ Bonus C1: claim lãi bị trì hoãn ═══════════════════════════
+
+    /// @notice User claim lãi NỢ đã ghi nhận từ `InterestDeferred` (C1).
+    /// @dev CEI: zero pending TRƯỚC external call — nếu transfer revert thì pending
+    ///      cũng rollback về giá trị cũ. Vault phải đủ; nếu không, payInterest revert
+    ///      `VM_InsufficientBalance` và pending giữ nguyên (user thử lại sau).
+    ///      Bị pause chặn (D3 — un-pause rồi mới claim).
+    function claimPendingInterest() external nonReentrant whenSystemRunning {
+        uint256 amount = pendingInterestOf[msg.sender];
+        if (amount == 0) revert SC_NothingPending();
+
+        pendingInterestOf[msg.sender] = 0; // CEI: zero-before-transfer
+        vault.payInterest(msg.sender, amount);
+        vault.decreaseOwedInterest(amount); // C2: giải ngân cam kết cuối cùng
+
+        emit PendingInterestClaimed(msg.sender, amount);
     }
 
     // ═══════════════════════════ User flow 3: earlyWithdraw ═══════════════════════════
@@ -344,6 +399,106 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         // principal gốc ở đây để làm lịch sử; theo spec event - interest = 0 với early
         emit Withdrawn(depositId, depositor, principal - penalty, 0, true);
         return (principal - penalty, penalty);
+    }
+
+    // ═══════════════════════════ Bonus C3: partial early withdraw ═══════════════════════════
+
+    /// @notice Rút MỘT PHẦN principal sớm: rút `amount` (bị penalty trên chính amount),
+    ///         phần còn lại GIỮ deposit Active và SINH LÃI ĐÚNG như cũ đến maturity.
+    /// @dev D4 (weighted accrual): gỡ `amount × (maturityAt - now)` khỏi `principalSeconds`
+    ///      — NFT và status giữ nguyên (không burn). amount == principal → phải dùng
+    ///      `earlyWithdraw` (revert `SC_AmountTooHigh`).
+    /// @return refunded = amount - penalty, penalty trên chính `amount`.
+    function partialEarlyWithdraw(uint256 depositId, uint256 amount)
+        external
+        nonReentrant
+        whenSystemRunning
+        onlyDepositOwner(depositId)
+        returns (uint256 refunded, uint256 penalty)
+    {
+        DepositInfo storage d = _deposits[depositId];
+        if (d.status != DepositStatus.Active) revert SC_DepositNotActive();
+        if (block.timestamp >= d.maturityAt) revert SC_TooLate();
+        if (amount == 0) revert SC_AmountZero();
+        if (amount >= d.principal) revert SC_AmountTooHigh(d.principal);
+
+        uint256 remaining = d.maturityAt - block.timestamp;
+        penalty = _earlyPenalty(amount, d.penaltyBpsAtOpen);
+        // lãi có liên quan chunk đang bỏ đi (weighted accrual, D4)
+        uint256 owedOnChunk = _computeInterestBySeconds(amount * remaining, d.aprBpsAtOpen);
+
+        d.principal -= amount;
+        d.principalSeconds -= amount * remaining;
+
+        vault.decreaseOwedInterest(owedOnChunk); // C2: chunk thu hẹp → cam kết giảm đúng
+
+        token.safeTransfer(msg.sender, amount - penalty);
+        if (penalty != 0) {
+            token.safeTransfer(address(vault), penalty);
+            vault.receivePenalty(penalty);
+            emit PenaltyCharged(depositId, msg.sender, penalty);
+        }
+
+        refunded = amount - penalty;
+        emit Withdrawn(depositId, msg.sender, refunded, 0, true);
+        return (refunded, penalty);
+    }
+
+    // ═══════════════════════════ Bonus C4: top-up ═══════════════════════════
+
+    /// @notice Nạp thêm `amount` vào deposit Active TRƯỚC maturity. Lãi cộng dồn
+    ///         theo weighted accrual (D4): `principalSeconds += amount × (maturityAt - now)`.
+    /// @dev owed tăng đúng lãi chunk mới sẽ sinh; plan min/max KHÔNG áp dụng top-up
+    ///      (chỉ cận MAX_PRINCIPAL chống overflow). Lưu ý cũng bị pause chặn (D3).
+    function topUpDeposit(uint256 depositId, uint256 amount) external nonReentrant whenSystemRunning onlyDepositOwner(depositId) {
+        DepositInfo storage d = _deposits[depositId];
+        if (d.status != DepositStatus.Active) revert SC_DepositNotActive();
+        if (block.timestamp >= d.maturityAt) revert SC_TooLate();
+        if (amount == 0) revert SC_AmountZero();
+        if (d.principal + amount > MAX_PRINCIPAL) revert SC_AmountTooLarge();
+
+        uint256 remaining = d.maturityAt - block.timestamp;
+        uint256 owedOnChunk = _computeInterestBySeconds(amount * remaining, d.aprBpsAtOpen);
+
+        d.principal += amount;
+        d.principalSeconds += amount * remaining;
+
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        vault.increaseOwedInterest(owedOnChunk); // C2: chunk mới → cam kết tăng đúng
+
+        emit DepositToppedUp(depositId, msg.sender, amount, d.principal);
+    }
+
+    // ═══════════════════════════ Bonus C5: emergency withdraw ═══════════════════════════
+
+    /// @notice Kéo tiền principal ra khi hệ thống pause kéo dài ≥ 7 ngày (EMERGENCY_DELAY).
+    /// @dev LÀ CỬA THOÁT DUY NHẤT khi paused (D3) → KHÔNG dùng `whenSystemRunning`,
+    ///      ngược lại require đang pause. Trả CHỈ principal (không lãi, không penalty).
+    ///      status → Withdrawn + burn NFT + giảm owed FULL (C2).
+    function emergencyWithdraw(uint256 depositId)
+        external
+        nonReentrant
+        onlyDepositOwner(depositId)
+        returns (uint256 principal_)
+    {
+        if (!vault.isPaused()) revert SC_SystemNotPaused();
+        if (block.timestamp < vault.pausedAt() + EMERGENCY_DELAY) revert SC_EmergencyNotReady();
+
+        DepositInfo storage d = _deposits[depositId];
+        if (d.status != DepositStatus.Active) revert SC_DepositNotActive();
+
+        address depositor = ownerOf(depositId);
+        uint256 principal = d.principal;
+        uint256 owedInterest = _computeInterestBySeconds(d.principalSeconds, d.aprBpsAtOpen);
+
+        d.status = DepositStatus.Withdrawn;
+        _burn(depositId);
+
+        vault.decreaseOwedInterest(owedInterest); // C2: deposit biến mất → cam kết xóa
+        token.safeTransfer(depositor, principal);
+
+        emit EmergencyWithdrawn(depositId, depositor, principal);
+        return principal;
     }
 
     // ═══════════════════════════ User flow 4: renewDeposit (manual) ═══════════════════════════
@@ -469,6 +624,25 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         return d.status == DepositStatus.Active && block.timestamp >= d.maturityAt + GRACE_PERIOD;
     }
 
+    /// @notice Deposit Active đã đến hạn (kèm chỉ thị hiển thị cho frontend).
+    function isMatured(uint256 depositId) external view returns (bool) {
+        if (!_depositExists(depositId)) revert SC_UnknownDeposit();
+        DepositInfo storage d = _deposits[depositId];
+        return d.status == DepositStatus.Active && block.timestamp >= d.maturityAt;
+    }
+
+    /// @notice Danh sách CÁC deposit (NFT) người dùng đang sở hữu — dùng ERC721Enumerable.
+    /// @dev OZ v5 không có `tokensOfOwner` → tự quét `tokenOfOwnerByIndex`.
+    ///      NFT bị burn khi deposit tất toán (D1) nên kết quả chỉ chứa deposit "sống".
+    function getUserDepositIds(address user) external view returns (uint256[] memory ids) {
+        uint256 count = balanceOf(user);
+        ids = new uint256[](count);
+        for (uint256 i = 0; i < count; ++i) {
+            ids[i] = tokenOfOwnerByIndex(user, i);
+        }
+        return ids;
+    }
+
     // ═══════════════════════════ Internal helpers ═══════════════════════════
 
     function _computeInterestBySeconds(uint256 principalSeconds, uint256 aprBps)
@@ -476,9 +650,7 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         pure
         returns (uint256)
     {
-        // ─]]);
-        //	Q4/D9: multiply-before-divide giữ precision; dust (< 1 unit) rơi về vault.
-        // ──]]);
+        // Q4/D9: multiply-before-divide giữ precision; dust (< 1 unit) rơi về vault.
         unchecked {
             // Safe: MAX_PRINCIPAL chặn overflow (D10)
             return (principalSeconds * aprBps) / (YEAR_SECONDS * BPS_DIVISOR);

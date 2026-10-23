@@ -5,7 +5,7 @@
 > **Nguồn:** `implementation_plan.md`, `extracted_assignment.txt`, `.agent/skills/architecture-designer`, `.agent/skills/ui-ux-pro-max`
 > **Biến thể cá nhân:** A = 4 (cuối MSSV), B = 3 (kề cuối) → grace **3 ngày**, APR **300 bps**, penalty **450 bps**, tenor **180 ngày**
 >
-> **📊 Tiến độ:** ✅ **P0** · ✅ **P1** (35/35 test, coverage 100%) · ✅ **P2** (121/121 test, SavingCore coverage 97.53%) · ⬜ P3+ · cập nhật 2026-10-23
+> **📊 Tiến độ:** ✅ **P0** · ✅ **P1** (35/35 test, coverage 100%) · ✅ **P2** (121/121 test, SavingCore coverage 97.53%) · ✅ **P3** (156/156 test, coverage 96.88%) · ⬜ P4+ · cập nhật 2026-10-23
 
 ---
 
@@ -34,8 +34,8 @@
 
 | # | Deliverable | Đường dẫn đích | Trạng thái |
 |---|---|---|---|
-| D1 | 3 smart contract + interfaces + mocks | `ac-hardhat-template-v2/contracts/**` | 🔄 (3/3 hiện diện: MockUSDC, VaultManager, SavingCore base; còn bổ sung bonus C1–C5 ở P3) |
-| D2 | Test suite ≥ 90% coverage, ≥ 76 test case | `ac-hardhat-template-v2/test/**` | 🔄 (121 test, coverage tổng 98.08% · đã vượt ≥90% từ P2) |
+| D1 | 3 smart contract + interfaces + mocks | `ac-hardhat-template-v2/contracts/**` | ✅ (MockUSDC · VaultManager · SavingCore đầy đủ base + bonus C1–C5) |
+| D2 | Test suite ≥ 90% coverage, ≥ 76 test case | `ac-hardhat-template-v2/test/**` | 🔄 (156 test, coverage tổng 97.41% · đạt ≥90%; còn Security.test.ts 8 case ở P4) |
 | D3 | Ignition module + scripts (seed, bot, export ABI, time-travel) | `ac-hardhat-template-v2/ignition/modules/`, `scripts/` | ⬜ |
 | D4 | Frontend React + Vite + ethers v6 + MetaMask | `frontend/**` | ⬜ |
 | D5 | README (variant, how-to-run, architecture, **Design Answers 7 câu**, C1–C5) | `README.md` (repo root) | ⬜ |
@@ -723,7 +723,7 @@ docs(readme): add design answers and variant table
 | P0 Setup | ✅ | 2026-10-23 | git init, network `localhost`, scripts sạch; T0.7 (dời OneDrive) để user quyết định — xem Risk R1 |
 | P1 Contracts core | ✅ | 2026-10-23 | MockUSDC + VaultManager + IVaultManager; 35/35 test; coverage 100% cho cả 2 |
 | P2 SavingCore base | ✅ | 2026-10-23 | SavingCore.sol (5 flow base + views); 121/121 test xanh; coverage 97.53% line |
-| P3 Bonus C1–C5 | ⬜ | | |
+| P3 Bonus C1–C5 | ✅ | 2026-10-23 | C1 defer+claim, C3 partial, C4 top-up, C5 emergency + views isMatured/getUserDepositIds; 156/156 test; coverage 96.88% |
 | P4 Tests + coverage | ⬜ | | |
 | P5 Deploy + bot | ⬜ | | |
 | P6 Frontend | ⬜ | | |
