@@ -1,0 +1,24 @@
+{
+  "name": "bank",
+  "version": "1.0.0",
+  "description": "Bank Deposit DApp (AT190234) — term deposit on-chain: SavingCore + VaultManager + MockUSDC",
+  "private": true,
+  "scripts": {
+    "compile": "npm --prefix ac-hardhat-template-v2 run compile",
+    "test": "npm --prefix ac-hardhat-template-v2 run test",
+    "test:coverage": "npm --prefix ac-hardhat-template-v2 run test:coverage",
+    "test:gas": "npm --prefix ac-hardhat-template-v2 run test:gas",
+    "node": "npm --prefix ac-hardhat-template-v2 run node",
+    "deploy:local": "npm --prefix ac-hardhat-template-v2 run deploy:local",
+    "deploy:sepolia": "npm --prefix ac-hardhat-template-v2 run deploy:sepolia"
+  },
+  "keywords": [
+    "hardhat",
+    "solidity",
+    "ethereum",
+    "term-deposit",
+    "risk:yield"
+  ],
+  "author": "AT190234",
+  "license": "ISC"
+}

@@ -1,0 +1,36 @@
+{
+  "name": "ac-hardhat-template-v2",
+  "version": "1.0.0",
+  "description": "Modern Hardhat v3 template with TypeScript, Ethers.js, and Ignition",
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:coverage": "hardhat test --coverage",
+    "test:gas": "hardhat test --gas-stats",
+    "node": "hardhat node"
+  },
+  "keywords": [
+    "hardhat",
+    "ethereum",
+    "smart-contracts",
+    "template"
+  ],
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^4.0.0",
+    "@openzeppelin/contracts": "^5.6.1",
+    "@openzeppelin/contracts-upgradeable": "^5.6.1",
+    "@openzeppelin/hardhat-upgrades": "^4.1.0",
+    "@types/chai": "^5.2.3",
+    "@types/chai-as-promised": "^8.0.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^26.6.5",
+    "chai": "^6.3.0",
+    "dotenv": "^18.0.8",
+    "ethers": "^6.17.0",
+    "hardhat": "^3.19.0",
+    "mocha": "^12.0.3",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Build / cache outputs
+artifacts/
+cache/
+dist/
+coverage/
+coverage.json
+types/
+
+# Hardhat local deployments (addresses ghi trong README thay vì commit)
+ignition/deployments/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/
