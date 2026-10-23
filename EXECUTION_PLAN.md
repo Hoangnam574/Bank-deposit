@@ -5,7 +5,7 @@
 > **Nguồn:** `implementation_plan.md`, `extracted_assignment.txt`, `.agent/skills/architecture-designer`, `.agent/skills/ui-ux-pro-max`
 > **Biến thể cá nhân:** A = 4 (cuối MSSV), B = 3 (kề cuối) → grace **3 ngày**, APR **300 bps**, penalty **450 bps**, tenor **180 ngày**
 >
-> **📊 Tiến độ:** ✅ **P0–P3** · ✅ **P4** (164 test, coverage 96.52%) · ✅ **P5** (gate local pass) · ✅ **P6** (build clean; E2E manual chờ demo) · ⬜ P7 · cập nhật 2026-10-24
+> **📊 Tiến độ:** ✅ **P0–P3** · ✅ **P4** (164 test, coverage 96.52%) · ✅ **P5** (gate local pass) · ✅ **P6** (build clean; E2E manual chờ demo) · ✅ **P7** (README + Security Plan; video/Sepolia/tag chờ user) · cập nhật 2026-10-24
 
 ---
 
@@ -749,3 +749,5 @@ docs(readme): add design answers and variant table
 ---
 
 > **Nguyên tắc vàng:** *Base flows đúng + số liệu biến thể đúng + giải thích được code* = 90 điểm. Bonus chỉ là phần cộng thêm. Đừng đánh đổi độ ổn định của base để lấy C3–C5.
+
+| P7 Docs + demo | ? (video + Sepolia + tag 1.0 ch? user) | 2026-10-24 | README.md root (variant table, quick start, architecture, Design Answers 7 c�u + code pointer, C1�C5 table, coverage, video script, limitations); SECURITY_PLAN.md (threat model 14 vector + roadmap S1�S4); npm audit 0 vuln (prod deps). C�n: quay video theo script �7, deploy Sepolia (T5.7/T5.8), ch?p coverage.png, gitleaks, tag v1.0 |
