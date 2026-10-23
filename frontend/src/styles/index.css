@@ -1,0 +1,133 @@
+/*
+ * Design tokens + base styles (T6.2, zgodne checklist ui-ux-pro-max)
+ * Fonts: Orbitron (heading) + Exo 2 (body) — link ở index.html
+ */
+@import "tailwindcss";
+
+@theme {
+  /* Màu nền tổng thể */
+  --color-bg: #0f172a;
+  --color-panel: #1e293b;
+  --color-line: #334155;
+  --color-subtle: #94a3b8;
+  --color-txt: #f8fafc;
+
+  /* Accent thương hiệu */
+  --color-primary: #f59e0b; /* amber  — APR/badge chính */
+  --color-secondary: #fbbf24; /* amber sáng — hover/highlight */
+  --color-cta: #8b5cf6; /* violet — nút hành động */
+
+  --color-ok: #4ade80;
+  --color-err: #f87171;
+  --color-warn: #facc15;
+  --color-muted: #bebebe;
+
+  /* Fonts */
+  --font-display: "Orbitron", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Exo 2", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-txt);
+    font-family: var(--font-body);
+    min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+}
+
+/* Đồng bộ utility rộng rãi tái sử dụng */
+@layer components {
+  /* Thẻ trắng panel dùng cho dashboard/card */
+  .card {
+    background-color: var(--color-panel);
+    border: 1px solid var(--color-line);
+    border-radius: 1rem;
+    padding: 1.25rem;
+  }
+  .btn {
+    font-weight: 700;
+    padding: 0.55rem 1.25rem;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition-property: color, background-color, border-color, opacity, transform;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
+    font-family: var(--font-body);
+    border: 1px solid transparent;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  /* CTA violet (mở tiết kiệm/claim) */
+  .btn-cta {
+    background-color: var(--color-cta);
+    color: #fff;
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+  }
+  .btn-cta:hover:not(:disabled) {
+    background-color: var(--color-primary);
+  }
+  /* Amber outline — hành động phụ (approve/switch network/renew) */
+  .btn-outline {
+    background: transparent;
+    border-color: var(--color-primary);
+    color: var(--color-secondary);
+  }
+  .btn-outline:hover:not(:disabled) {
+    background-color: var(--color-primary);
+    color: #0f172a;
+  }
+  /* Danger — pause/emergency/early warnigns */
+  .btn-danger {
+    background: transparent;
+    border-color: var(--color-err);
+    color: var(--color-err);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: var(--color-err);
+    color: #0f172a;
+  }
+  /* Input chuẩn */
+  .field {
+    width: 100%;
+    background-color: var(--color-panel);
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    color: var(--color-txt);
+    font-family: var(--font-body);
+  }
+  .field:focus-visible {
+    outline: 2px solid var(--color-cta);
+    outline-offset: 1px;
+  }
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-subtle);
+    margin-bottom: 0.3rem;
+  }
+}
+
+/* Tôn trọng lucide "giảm chuyển động" cho người dùng (checklist T6.14) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

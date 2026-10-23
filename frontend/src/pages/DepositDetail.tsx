@@ -1,0 +1,455 @@
+/**
+ * DepositDetail "/deposit/:id" (T6.10) — thông tin đầy đủ + nút theo trạng thái:
+ *   - Active & đã mature  → Withdraw (principal + lãi)
+ *   - Active & chưa mature → Early Withdraw (CẢNH BÁO mất lãi + penalty)
+ *   - Partial / Top-up    → cần amount (+ approve riêng cho top-up)
+ *   - Renew               → giữ plan cũ hoặc plan mới (enabled)
+ *   - Pause hoạt động     → Emergency Withdraw C5 nếu pause ≥ 7 ngày
+ *   - có pending lãi NỢ (C1 defer) → Claim Pending
+ * Mọi action có confirm (window.confirm) + map lỗi thân thiện.
+ */
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, AlertTriangle, Loader2, Info } from "lucide-react";
+import type { ContractTransactionResponse } from "ethers";
+import StatusBadge from "@/components/StatusBadge";
+import Countdown from "@/components/Countdown";
+import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
+import { useWallet } from "@/providers/WalletProvider";
+import { useTx } from "@/hooks/useTx";
+import { fmtToken, formatBps, fmtDate } from "@/lib/format";
+
+const SCALAR = 1_000_000n;
+const ACTIVE = 0;
+const GRACE_SECONDS = 3 * 86_400; // variant AT190234: grace 3 ngày
+const EMERGENCY_DELAY_SECONDS = 7 * 86_400; // C5 sau 7 ngày pause
+
+interface Detail {
+  planId: bigint;
+  principal: bigint;
+  maturityAt: bigint;
+  aprBpsAtOpen: bigint;
+  penaltyBpsAtOpen: bigint;
+  tenorDays: bigint;
+  status: bigint;
+}
+
+interface Preview {
+  principal: bigint;
+  interest: bigint;
+  penalty: bigint;
+  amountIfEarly: bigint;
+  maturityAt: bigint;
+  status: bigint;
+}
+
+function parseInput(input: string): bigint {
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(input)) throw new Error("Số tiền không hợp lệ");
+  const [int, frac = ""] = input.split(".");
+  const fracPadded = frac.padEnd(6, "0").slice(0, 6);
+  return BigInt(int || "0") * SCALAR + BigInt(fracPadded || "0");
+}
+
+export default function DepositDetail() {
+  const { id } = useParams();
+  const depositId = useMemo(() => (id ? Number(id) : null), [id]);
+  const navigate = useNavigate();
+  const { contracts, hasDeployment } = useContracts();
+  const signerC = useSignerContracts();
+  const { address, getBrowser } = useWallet();
+  const { state, run } = useTx();
+
+  const [d, setD] = useState<Detail | null>(null);
+  const [pv, setPv] = useState<Preview | null>(null);
+  const [nowSec, setNowSec] = useState(0);
+  const [paused, setPaused] = useState<boolean>(false);
+  const [pauseAt, setPauseAt] = useState<number | null>(null);
+  const [owner, setOwner] = useState<string | null>(null);
+  const [pendingInterest, setPendingInterest] = useState<bigint | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [approved, setApproved] = useState(false);
+
+  const [inputAmount, setInputAmount] = useState("");
+  const [renewPlan, setRenewPlan] = useState<number | null>(null);
+  const [customRenew, setCustomRenew] = useState(false);
+
+  const amount = useMemo(() => {
+    try {
+      return inputAmount.trim() ? parseInput(inputAmount) : null;
+    } catch {
+      return null;
+    }
+  }, [inputAmount]);
+
+  const pending = state.status === "pending";
+
+  /* ── Fetch deposit + preview + vault pause status ── */
+  useEffect(() => {
+    if (!contracts || !hasDeployment || depositId === null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const block = await getBrowser()?.getBlock("latest");
+        if (!cancelled && block) setNowSec(Number(block.timestamp));
+        const raw = (await contracts.core.getDeposit(depositId)) as unknown[];
+        const own = String(await contracts.core.ownerOf(depositId)).toLowerCase();
+        const isActivePaused = Boolean(await contracts.vault.isPaused());
+        const pausedAtRaw = Number(String(await contracts.vault.pausedAt()));
+        const pend = address ? ((await contracts.core.pendingInterestOf(address)) as bigint) : 0n;
+        const px = (await contracts.core.previewExit(depositId)) as unknown[];
+        if (!cancelled) {
+          setD({
+            planId: raw[0] as bigint,
+            principal: raw[1] as bigint,
+            maturityAt: raw[4] as bigint,
+            aprBpsAtOpen: raw[5] as bigint,
+            penaltyBpsAtOpen: raw[6] as bigint,
+            tenorDays: raw[7] as bigint,
+            status: raw[8] as bigint,
+          });
+          setPv({
+            principal: px[0] as bigint,
+            interest: px[1] as bigint,
+            penalty: px[2] as bigint,
+            amountIfEarly: px[3] as bigint,
+            maturityAt: px[4] as bigint,
+            status: px[5] as bigint,
+          });
+          setOwner(own);
+          setPaused(isActivePaused);
+          setPauseAt(pausedAtRaw);
+          setPendingInterest(pend);
+          setNotFound(false);
+        }
+      } catch {
+        if (!cancelled) setNotFound(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [contracts, hasDeployment, depositId, address, state.status]);
+
+  /* Check allowance cho top-up */
+  useEffect(() => {
+    let cancelled = false;
+    if (!signerC || !amount || amount <= 0n) {
+      setApproved(false);
+      return;
+    }
+    void signerC.usdc
+      .allowance(address, signerC.savingCoreAddress)
+      .then((a) => {
+        if (!cancelled) setApproved((a as bigint) >= amount);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [signerC, address, amount, state.status]);
+
+  const matured = d !== null && nowSec >= Number(d.maturityAt);
+  const overGrace = d !== null && nowSec >= Number(d.maturityAt) + GRACE_SECONDS;
+  const isOwner = owner !== null && address !== null && owner.toLowerCase() === address.toLowerCase();
+  const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
+  const closed = d !== null && Number(d.status) !== ACTIVE;
+
+  const contractCall = (
+    label: string,
+    call: () => Promise<ContractTransactionResponse>,
+  ): void => {
+    void run(label, async () => call());
+  };
+
+  if (notFound) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
+        <Info className="mx-auto inline text-subtle" size={40} aria-hidden />
+        <p>Không tìm thấy deposit #{depositId} (NFT có thể đã burn sau khi rút).</p>
+        <Link to="/deposits" className="btn btn-outline mt-4 cursor-pointer">
+          ← Về sổ tiết kiệm
+        </Link>
+      </div>
+    );
+  }
+  if (!d || !pv) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-16 text-subtle">
+        Đang tải deposit #{depositId}… (cần node localhost chạy + deploy)
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 pb-20">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="mt-8 btn btn-outline !py-1.5 !px-3 text-xs inline-flex items-center gap-1 cursor-pointer"
+      >
+        <ArrowLeft size={14} /> Trở về
+      </button>
+
+      <h1 className="mt-4 text-3xl font-bold flex items-center gap-3">
+        Deposit #{depositId} <StatusBadge status={d.status} />
+      </h1>
+
+      {owner && !isOwner && (
+        <div className="card border-warn/40 text-warn text-sm mt-4">
+          Chỉ chủ NFT ({owner.slice(0, 10)}…) mới thao tác được — bạn đang dùng {address?.slice(0, 10)}…
+        </div>
+      )}
+
+      {/* ── Thông tin số liệu ─── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
+        <InfoBox label="Principal" value={<>{fmtToken(d.principal)} <span className="text-subtle">USDC</span></>} />
+        <InfoBox label="APR khi mở (snapshot)" value={<span className="text-primary font-display">{formatBps(d.aprBpsAtOpen)}</span>} />
+        <InfoBox label="Kỳ hạn" value={`${Number(d.tenorDays)} ngày`} />
+        <InfoBox
+          label="Đáo hạn"
+          value={nowSec > 0 ? <Countdown targetSec={d.maturityAt} nowSec={nowSec} /> : fmtDate(d.maturityAt)}
+        />
+        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỷ tới hiện tại"} value={<span className="text-ok">+{fmtToken(pv.interest, 4)}</span>} />
+        <InfoBox label="Phạt nếu rút sớm" value={<span className="text-warn">−{fmtToken(pv.penalty, 2)}</span>} />
+      </div>
+
+      {overGrace && Number(d.status) === ACTIVE && (
+        <div className="card mt-4 border-primary/60 bg-primary/10 text-sm">
+          <strong>Quá grace period</strong> (maturity + 3 ngày) — bot sẽ gọi autoRenewDeposit: nội danh renewal
+          principal + lãi ghép, APR <strong>giữ nguyên</strong> {formatBps(d.aprBpsAtOpen)} và tenor{" "}
+          {Number(d.tenorDays)} ngày (snapshot podle đề).
+        </div>
+      )}
+
+      {pendingInterest !== null && pendingInterest > 0n && isOwner && (
+        <div className="card mt-4 border-warn/50 flex flex-wrap items-center gap-3">
+          <span className="text-sm flex-1">
+            Lãi bị <strong>deferred</strong> (C1 — vault thiếu USDC tại thời điểm rút): đang NỢ bạn{" "}
+            <strong className="text-ok">{fmtToken(pendingInterest)} USDC</strong>.
+          </span>
+          <button
+            type="button"
+            className="btn btn-cta"
+            onClick={() => contractCall("Claim lãi deferred", async () => (await signerC!.core.claimPendingInterest()) as unknown as ContractTransactionResponse)}
+            disabled={pending}
+          >
+            Claim {fmtToken(pendingInterest, 2)}
+          </button>
+        </div>
+      )}
+
+      {/* ── Cảnh báo rút sớm — bắt buộc theo T6.10 ─── */}
+      {!matured && !closed && (
+        <div className="card mt-4 border-err/50 bg-err/5 text-sm flex items-start gap-2" role="alert">
+          <AlertTriangle size={18} className="text-err shrink-0 mt-0.5" />
+          <span>
+            Rút sớm trước maturity: mất toàn bộ lãi tích luỹ + phạt {formatBps(d.penaltyBpsAtOpen)} → chỉ nhận{" "}
+            <strong>{fmtToken(pv.amountIfEarly, 2)} USDC</strong> (−{fmtToken(pv.penalty, 2)}).
+          </span>
+        </div>
+      )}
+
+      {closed && (
+        <div className="card mt-4 border-subtle/40 text-subtle text-sm">
+          Deposit đã đóng — NFT đã burn. Số liệu trên là lịch sử (Withdrawn / EarlyWithdrawn / AutoRenewed).
+        </div>
+      )}
+
+      {paused && !closed && !emergencyUnlocked && pauseAt !== null && (
+        <div className="text-xs text-warn mt-3">
+          Hệ thống đang pause — write bị chặn. Emergency (C5) unlock sau{" "}
+          {Math.max(0, Math.ceil((pauseAt + EMERGENCY_DELAY_SECONDS - nowSec) / 3600))} giờ.
+        </div>
+      )}
+
+      {/* ── Actions ─── */}
+      {isOwner && !closed && (
+        <div className="card mt-6">
+          <h2 className="font-display tracking-wider mb-3">Thao tác</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="op-amount">Số lượng (cho Rút một phần / Top-up)</label>
+              <input
+                id="op-amount"
+                className="field"
+                inputMode="decimal"
+                placeholder="VD: 1000"
+                value={inputAmount}
+                onChange={(e) => setInputAmount(e.target.value)}
+              />
+              <p className="text-xs text-subtle mt-1">
+                Top-up không bị giới hạn min/max của plan — chỉ cap MAX_PRINCIPAL hợp đồng.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="renew-plan">Plan mới cho Renew (nếu muốn đổi)</label>
+              <div className="flex gap-2">
+                <input
+                  id="renew-plan"
+                  className="field"
+                  placeholder={customRenew ? "VD: 2" : "giữ plan hiện có"}
+                  disabled={!customRenew}
+                  onChange={(e) => setRenewPlan(e.target.value ? Number(e.target.value) : null)}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline !px-3 text-xs"
+                  aria-pressed={customRenew}
+                  aria-label="Đổi plan khi renew"
+                  onClick={() => setCustomRenew((s) => !s)}
+                >
+                  {customRenew ? "Tùy chọn" : "Giữ plan"}
+                </button>
+              </div>
+              <p className="text-xs text-subtle mt-1">Renew chỉ vào plan enabled — ngược lại revert SC_PlanNotEnabled.</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            {matured && !paused && (
+              <button
+                type="button"
+                className="btn btn-cta"
+                disabled={pending}
+                onClick={() =>
+                  contractCall("Rút đủ hạn", async () => (await signerC!.core.withdrawAtMaturity(depositId!)) as unknown as ContractTransactionResponse)
+                }
+              >
+                Rút full (+{fmtToken(pv.interest, 2)} lãi)
+              </button>
+            )}
+            {!matured && (
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={pending}
+                onClick={() => {
+                  if (window.confirm(`RÚT SỚM mất lãi + phạt ${fmtToken(pv.penalty, 2)} USDC. Tiếp tục?`)) {
+                    contractCall("Rút sớm", async () => (await signerC!.core.earlyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
+                  }
+                }}
+              >
+                Rút sớm (−{fmtToken(pv.penalty, 2)} penalty)
+              </button>
+            )}
+
+            {!matured && !paused && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={pending || amount === null || amount === 0n || amount >= d.principal}
+                title={amount === null ? "Nhập số lượng ở trên" : amount >= d.principal ? "Phải < principal" : ""}
+                onClick={() => {
+                  if (window.confirm(`Rút một phần ${fmtToken(amount!)} USDC — tính lãi weighted (C3). OK?`)) {
+                    contractCall("Rút một phần", async () => (await signerC!.core.partialEarlyWithdraw(depositId!, amount!)) as unknown as ContractTransactionResponse);
+                  }
+                }}
+              >
+                Rút một phần
+              </button>
+            )}
+
+            {!paused &&
+              (approved ? (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={pending || amount === null || amount === 0n}
+                  onClick={() => {
+                    if (window.confirm("Top-up thêm vào principal hiện tại?")) {
+                      contractCall("Top-up", async () => (await signerC!.core.topUpDeposit(depositId!, amount!)) as unknown as ContractTransactionResponse);
+                    }
+                  }}
+                >
+                  Top-up {amount !== null ? fmtToken(amount, 2) : ""}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={pending || amount === null || amount === 0n}
+                  onClick={() => {
+                    if (!signerC) return;
+                    contractCall("Approve USDC (top-up)", async () =>
+                      (await signerC.usdc.approve(signerC.savingCoreAddress, amount!)) as unknown as ContractTransactionResponse,
+                    );
+                  }}
+                >
+                  1. Approve (cho top-up)
+                </button>
+              ))}
+
+            {!paused && !overGrace && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                disabled={pending || (customRenew && renewPlan === null)}
+                onClick={() => {
+                  const target = customRenew ? `plan #${renewPlan}` : "plan hiện có";
+                  if (window.confirm(`Renew ngay — principal + lãi ghép vào ${target}, tenor giữ nguyên?`)) {
+                    contractCall("Renew", async () =>
+                      (await signerC!.core.renewDeposit(depositId!, customRenew ? renewPlan! : d.planId)) as unknown as ContractTransactionResponse,
+                    );
+                  }
+                }}
+              >
+                Renew
+              </button>
+            )}
+
+            {paused && !emergencyUnlocked && (
+              <button type="button" className="btn btn-danger cursor-not-allowed" disabled title="Cần pause ≥ 7 ngày (C5)">
+                Emergency (khóa)
+              </button>
+            )}
+            {emergencyUnlocked && (
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={pending}
+                onClick={() => {
+                  if (window.confirm("Emergency Withdraw C5 — không lãi, không penalty. OK?")) {
+                    contractCall("Emergency withdraw", async () => (await signerC!.core.emergencyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
+                  }
+                }}
+              >
+                Emergency Withdraw (C5)
+              </button>
+            )}
+          </div>
+
+          {pending && (
+            <p className="text-xs text-subtle mt-3 inline-flex items-center gap-1" aria-live="polite">
+              <Loader2 size={13} className="animate-spin" /> Đợi xác nhận giao dịch… (toast hiển thị tx hash)
+            </p>
+          )}
+          {state.status === "error" && (
+            <p className="text-xs text-err mt-3" role="alert" aria-live="polite">
+              {state.message}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Debug footer — các field snapshot helpful cho demo */}
+      <details className="mt-6 text-xs text-subtle">
+        <summary className="cursor-pointer">Chi tiết kỹ thuật (snapshot từ contract)</summary>
+        <ul className="mt-2 space-y-1 font-mono">
+          <li>planId: {Number(d.planId)} · penaltyBps snapshot: {Number(d.penaltyBpsAtOpen)} bps</li>
+          <li>startAt → maturityAt: {fmtDate(Number(pv.maturityAt) - Number(d.tenorDays) * 86400)} → {fmtDate(Number(pv.maturityAt))}</li>
+          <li>Status: {Number(d.status)} · isOwner: {String(isOwner)}</li>
+        </ul>
+      </details>
+    </div>
+  );
+}
+
+function InfoBox({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="card !rounded-lg !p-3">
+      <div className="text-xs text-subtle">{label}</div>
+      <div className="text-lg mt-1">{value}</div>
+    </div>
+  );
+}
