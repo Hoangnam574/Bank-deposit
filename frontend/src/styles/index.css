@@ -5,14 +5,15 @@
 @import "tailwindcss";
 
 @theme {
-  /* Màu nền tổng thể */
-  --color-bg: #0f172a;
-  --color-panel: #1e293b;
-  --color-line: #334155;
-  --color-subtle: #94a3b8;
+  /* Lớp nền — 3 lớp rõ (bg → panel → card) để phân tầng trên OLED dark */
+  --color-bg: #0b1120;
+  --color-panel: #131e33;
+  --color-card: #18243e;
+  --color-line: #2b3b57;
+  --color-subtle: #a9b6cc; /* ≥ 4.5:1 trên bg */
   --color-txt: #f8fafc;
 
-  /* Accent thương hiệu */
+  /* Accent thương hiệu — Gold trust + Purple tech (skill crypto-fintech) */
   --color-primary: #f59e0b; /* amber  — APR/badge chính */
   --color-secondary: #fbbf24; /* amber sáng — hover/highlight */
   --color-cta: #8b5cf6; /* violet — nút hành động */
@@ -20,7 +21,7 @@
   --color-ok: #4ade80;
   --color-err: #f87171;
   --color-warn: #facc15;
-  --color-muted: #bebebe;
+  --color-muted: #c3cade;
 
   /* Fonts */
   --font-display: "Orbitron", ui-sans-serif, system-ui, sans-serif;
@@ -44,12 +45,34 @@
 
 /* Đồng bộ utility rộng rãi tái sử dụng */
 @layer components {
-  /* Thẻ trắng panel dùng cho dashboard/card */
+  /* Card sits trên panel (3 lớp bg → panel → card) */
   .card {
-    background-color: var(--color-panel);
+    background-color: var(--color-card);
     border: 1px solid var(--color-line);
     border-radius: 1rem;
     padding: 1.25rem;
+    /* tinh chỉnh depth: highlight mép trên, đổ bóng mềm theo Dark OLED */
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+      0 8px 24px -12px rgb(0 0 0 / 0.5);
+  }
+  /* Tile nhỏ cho StatStrip */
+  .stat-tile {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    padding: 0.6rem 0.9rem;
+  }
+  /* Hero gradient gold↔violet — personality trang (dùng cho Dashboard/Detail headers) */
+  .hero-gradient {
+    background:
+      radial-gradient(60% 90% at 15% 15%, rgb(245 158 11 / 0.14), transparent 60%),
+      radial-gradient(70% 100% at 85% 20%, rgb(139 92 246 / 0.16), transparent 55%),
+      var(--color-card);
+  }
+  /* Gold glow cho số liệu (skill KEY EFFECTS: minimal glow) */
+  .glow-num {
+    text-shadow: 0 0 10px rgb(245 158 11 / 0.35);
   }
   .btn {
     font-weight: 700;

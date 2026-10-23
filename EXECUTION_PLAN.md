@@ -726,7 +726,7 @@ docs(readme): add design answers and variant table
 | P3 Bonus C1–C5 | ✅ | 2026-10-23 | C1 defer+claim, C3 partial, C4 top-up, C5 emergency + views isMatured/getUserDepositIds; 156/156 test; coverage 96.88% |
 | P4 Tests + coverage | ✅ | 2026-10-23 | 164 test (MockUSDC 5 · VM 30 · SC base 86 · bonus 35 · Security 8); coverage 96.52% lines; MaliciousDepositor 0 lượt attack thành công |
 | P5 Deploy + bot | ✅ (T5.7/T5.8 Sepolia chờ user có key) | 2026-10-23 | Ignition module BankDeposit.ts + seed/bot/interact/timeTravel/withdraw/exportFrontend; gate P5 chạy 1 mạch trên localhost (deploy → seed → open → timeTravel → bot renew #1/#4 → withdraw lãi ghép 5,000→5,073.97→5,149.04); seed idempotent |
-| P6 Frontend | ✅ (T6.16 E2E full-flow chờ demo manual với MetaMask) | 2026-10-24 | Vite+React-TS+Tailwind v4 (`@theme` tokens, Orbitron/Exo 2); Wallet/Contracts/Toast providers; NetworkGuard + Faucet; 5 pages (Dashboard/Open/Deposits/Detail/Admin); `npm run build` TS-clean; dev server serve OK với deploy+seed local |
+| P6 Frontend | ✅ (T6.16 E2E full-flow chờ demo manual với MetaMask) | 2026-10-24 | Vite+React-TS+Tailwind v4 (`@theme` tokens, Orbitron/Exo 2); Wallet/Contracts/Toast providers; NetworkGuard + Faucet; 5 pages (Dashboard/Open/Deposits/Detail/Admin); `npm run build` TS-clean; dev server serve OK với deploy+seed local · **UI redesign v2** (theo quiz user + skill ui-ux-pro-max): 3 lớp surface OLED, StatStrip 4 tile dưới nav, chain pill + vai trò admin, hero gradient gold↔violet, progress bar kỳ hạn, NoDeploymentState có action (fix dead-end chain), sticky summary /open, glow số tiền |
 | P7 Docs + video | ⬜ | | |
 
 ---
@@ -750,4 +750,4 @@ docs(readme): add design answers and variant table
 
 > **Nguyên tắc vàng:** *Base flows đúng + số liệu biến thể đúng + giải thích được code* = 90 điểm. Bonus chỉ là phần cộng thêm. Đừng đánh đổi độ ổn định của base để lấy C3–C5.
 
-| P7 Docs + demo | ? (video + Sepolia + tag 1.0 ch? user) | 2026-10-24 | README.md root (variant table, quick start, architecture, Design Answers 7 c�u + code pointer, C1�C5 table, coverage, video script, limitations); SECURITY_PLAN.md (threat model 14 vector + roadmap S1�S4); npm audit 0 vuln (prod deps). C�n: quay video theo script �7, deploy Sepolia (T5.7/T5.8), ch?p coverage.png, gitleaks, tag v1.0 |
+| P7 Docs + demo | ? (video + Sepolia + tag 1.0 ch? user) | 2026-10-24 | README.md root (variant table, quick start, architecture, Design Answers 7 c�u + code pointer, C1�C5 table, coverage, video script, limitations); SECURITY_PLAN.md (threat model 14 vector + roadmap S1�S4); npm audit 0 vuln (prod deps). C�n: quay video theo script �7, deploy Sepolia (T5.7/T5.8), ch?p coverage.png, gitleaks, tag v1.0 |

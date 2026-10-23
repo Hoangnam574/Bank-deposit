@@ -53,6 +53,8 @@ export function useTx() {
           message: `${message} — thành công`,
           hash,
         });
+        // Báo cho các widget stats (StatStrip/pages) refresh dữ liệu on-chain
+        window.dispatchEvent(new Event("bank:tx-ok"));
         toast.push({
           kind: "success",
           message: `${message} — thành công`,

@@ -8,6 +8,7 @@ import { WalletProvider } from "@/providers/WalletProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
 import { ContractsProvider } from "@/providers/ContractsProvider";
 import Navbar from "@/components/Navbar";
+import StatStrip from "@/components/StatStrip";
 import { NetworkGuard } from "@/components/NetworkGuard";
 import Dashboard from "@/pages/Dashboard";
 import OpenDeposit from "@/pages/OpenDeposit";
@@ -23,6 +24,7 @@ export default function App() {
           <HashRouter>
             <Navbar />
             <NetworkGuard />
+            <StatStrip />
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/open" element={<OpenDeposit />} />

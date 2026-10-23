@@ -14,6 +14,7 @@ import { ArrowLeft, AlertTriangle, Loader2, Info } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
+import NoDeploymentState from "@/components/NoDeploymentState";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";
 import { useTx } from "@/hooks/useTx";
@@ -27,6 +28,7 @@ const EMERGENCY_DELAY_SECONDS = 7 * 86_400; // C5 sau 7 ngày pause
 interface Detail {
   planId: bigint;
   principal: bigint;
+  startAt: bigint;
   maturityAt: bigint;
   aprBpsAtOpen: bigint;
   penaltyBpsAtOpen: bigint;
@@ -101,6 +103,7 @@ export default function DepositDetail() {
           setD({
             planId: raw[0] as bigint,
             principal: raw[1] as bigint,
+            startAt: raw[3] as bigint,
             maturityAt: raw[4] as bigint,
             aprBpsAtOpen: raw[5] as bigint,
             penaltyBpsAtOpen: raw[6] as bigint,
@@ -172,6 +175,13 @@ export default function DepositDetail() {
       </div>
     );
   }
+  if (!contracts) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 pb-10">
+        <NoDeploymentState page="Chi tiết deposit" />
+      </div>
+    );
+  }
   if (!d || !pv) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-subtle">
@@ -190,9 +200,15 @@ export default function DepositDetail() {
         <ArrowLeft size={14} /> Trở về
       </button>
 
-      <h1 className="mt-4 text-3xl font-bold flex items-center gap-3">
-        Deposit #{depositId} <StatusBadge status={d.status} />
-      </h1>
+      <section className="mt-4 rounded-2xl border border-line hero-gradient px-6 py-5">
+        <h1 className="text-2xl sm:text-3xl font-bold font-display flex items-center gap-3">
+          Deposit #{depositId} <StatusBadge status={d.status} />
+        </h1>
+        <p className="text-sm text-subtle mt-1">
+          Lãi tính theo giây · APR snapshot <strong className="text-primary">{formatBps(d.aprBpsAtOpen)}</strong> ·
+          penalty <strong className="text-warn">{formatBps(d.penaltyBpsAtOpen)}</strong> (khóa lúc mở — admin đổi plan không ảnh hưởng)
+        </p>
+      </section>
 
       {owner && !isOwner && (
         <div className="card border-warn/40 text-warn text-sm mt-4">
@@ -209,15 +225,41 @@ export default function DepositDetail() {
           label="Đáo hạn"
           value={nowSec > 0 ? <Countdown targetSec={d.maturityAt} nowSec={nowSec} /> : fmtDate(d.maturityAt)}
         />
-        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỷ tới hiện tại"} value={<span className="text-ok">+{fmtToken(pv.interest, 4)}</span>} />
+        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"} value={<span className="text-ok font-display glow-num">+{fmtToken(pv.interest, 4)}</span>} />
         <InfoBox label="Phạt nếu rút sớm" value={<span className="text-warn">−{fmtToken(pv.penalty, 2)}</span>} />
       </div>
 
+      {/* Progress kỳ hạn (startAt → maturityAt) */}
+      {Number(d.status) === ACTIVE && Number(d.maturityAt) > 0 && (
+        <div className="card mt-3 !py-3" aria-hidden>
+          <div className="flex justify-between text-xs text-subtle mb-1.5">
+            <span>{fmtDate(d.startAt)}</span>
+            <span>{fmtDate(d.maturityAt)}</span>
+          </div>
+          <div className="h-2 rounded-full bg-line/70 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-500"
+              style={{
+                width: `${Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    ((nowSec - Number(d.startAt)) /
+                      Math.max(1, Number(d.maturityAt) - Number(d.startAt))) *
+                      100,
+                  ),
+                ).toFixed(1)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {overGrace && Number(d.status) === ACTIVE && (
         <div className="card mt-4 border-primary/60 bg-primary/10 text-sm">
-          <strong>Quá grace period</strong> (maturity + 3 ngày) — bot sẽ gọi autoRenewDeposit: nội danh renewal
+          <strong>Quá grace period</strong> (maturity + 3 ngày) — bot sẽ gọi autoRenewDeposit: renewal
           principal + lãi ghép, APR <strong>giữ nguyên</strong> {formatBps(d.aprBpsAtOpen)} và tenor{" "}
-          {Number(d.tenorDays)} ngày (snapshot podle đề).
+          {Number(d.tenorDays)} ngày (snapshot).
         </div>
       )}
 

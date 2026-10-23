@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Lock, Loader2 } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
+import NoDeploymentState from "@/components/NoDeploymentState";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";import { useTx } from "@/hooks/useTx";
 import { fmtToken, formatBps, parseToken as parseTokenInput } from "@/lib/format";
@@ -140,27 +141,32 @@ export default function Admin() {
   if (!hasWallet) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
-        Kết nối ví để xem trang admin.
+        Kết nối ví để xem trang admin (nút{" "}
+        <strong className="text-txt">"Kết nối ví"</strong> ở navbar).
       </div>
     );
   }
   if (!contracts) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
-        Chain hiện tại chưa có deployment — cần chain 31337 (local) hoặc 11155111 (Sepolia).
-      </div>
-    );
+    /* Chain allowed nhưng chưa deploy (vd Sepolia khi chưa deploy, hoặc chain lạ
+       vượt NetworkGuard) — empty state có action thay câu text lơ lửng. */
+    return <NoDeploymentState page="Admin" />;
   }
 
   const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-16">
-      <h1 className="mt-8 text-3xl font-bold">Admin</h1>
-      <p className="text-subtle text-sm mt-1">
-        Vault owner: <code>{owner ?? "—"}</code>{" "}
-        {isOwner ? <span className="text-ok">(bạn là owner)</span> : <span className="text-warn">(không phải bạn — chế độ xem)</span>}
-      </p>
+      <section className="mt-6 rounded-2xl border border-line hero-gradient px-6 py-6 sm:px-9">
+        <h1 className="text-3xl font-bold font-display tracking-wide">Admin console</h1>
+        <p className="text-subtle text-sm mt-1">
+          Vault owner: <code>{owner ?? "—"}</code>{" "}
+          {isOwner ? (
+            <span className="text-ok">(bạn là owner)</span>
+          ) : (
+            <span className="text-warn">(không phải bạn — chế độ xem)</span>
+          )}
+        </p>
+      </section>
 
       {!isOwner && (
         <div className="card mt-4 border-subtle/40 flex items-center gap-2 text-sm text-subtle">
@@ -172,19 +178,27 @@ export default function Admin() {
 
       {owner && (
         <>
-          {/* ── Vault status ─── */}
+          {/* ── Vault status: 3 tile lớn ─── */}
           <section aria-label="Trạng thái vault" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
             <div className="card !p-4">
-              <div className="text-xs text-subtle">Vault balance (vật chất)</div>
-              <div className="text-2xl font-display">{vaultBal !== null ? fmtToken(vaultBal) : "…"} <span className="text-sm text-subtle">USDC</span></div>
+              <div className="text-xs text-subtle">Vault balance (thực)</div>
+              <div className="mt-1 text-2xl font-display">
+                {vaultBal !== null ? fmtToken(vaultBal) : "…"}{" "}
+                <span className="text-sm text-subtle font-body">USDC</span>
+              </div>
             </div>
             <div className="card !p-4">
               <div className="text-xs text-subtle">Owed interest (cam kết trả)</div>
-              <div className="text-2xl font-display text-warn">{owed !== null ? fmtToken(owed) : "…"} <span className="text-sm text-subtle">USDC</span></div>
+              <div className="mt-1 text-2xl font-display text-warn">
+                {owed !== null ? fmtToken(owed) : "…"}{" "}
+                <span className="text-sm text-subtle font-body">USDC</span>
+              </div>
             </div>
-            <div className="card !p-4">
-              <div className="text-xs text-subtle">Available (rút được)</div>
-              <div className="text-2xl font-display text-ok">{available !== null ? fmtToken(available) : "…"}</div>
+            <div className="card !p-4 border-ok/30">
+              <div className="text-xs text-subtle">Available (admin rút được)</div>
+              <div className="mt-1 text-2xl font-display text-ok glow-num">
+                {available !== null ? fmtToken(available) : "…"}
+              </div>
             </div>
           </section>
 

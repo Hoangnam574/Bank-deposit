@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Inbox } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
+import NoDeploymentState from "@/components/NoDeploymentState";
 import { useContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";
 import { fmtToken, formatBps } from "@/lib/format";
@@ -19,6 +20,7 @@ export interface DepositRow {
   id: number;
   planId: bigint;
   principal: bigint;
+  startAt: bigint;
   maturityAt: bigint;
   aprBpsAtOpen: bigint;
   penaltyBpsAtOpen: bigint;
@@ -58,6 +60,7 @@ export default function MyDeposits() {
             id: Number(id),
             planId: d[0] as bigint,
             principal: d[1] as bigint,
+            startAt: d[3] as bigint,
             maturityAt: d[4] as bigint,
             aprBpsAtOpen: d[5] as bigint,
             penaltyBpsAtOpen: d[6] as bigint,
@@ -94,9 +97,10 @@ export default function MyDeposits() {
         </Link>
       </div>
 
-      {error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
-      {loading && <div className="text-subtle text-sm">Đang tải danh sách…</div>}
-      {!loading && !error && rows.length === 0 && (
+      {!contracts && <NoDeploymentState page="Sổ tiết kiệm" />}
+      {contracts && error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
+      {contracts && loading && <div className="text-subtle text-sm">Đang tải danh sách…</div>}
+      {contracts && !loading && !error && rows.length === 0 && (
         <div className="card text-center py-12 border-dashed border-line">
           <Inbox className="mx-auto text-subtle" size={42} aria-hidden />
           <p className="mt-3 text-subtle">Bạn chưa có deposit nào</p>
@@ -106,7 +110,7 @@ export default function MyDeposits() {
         </div>
       )}
 
-      {rows.length > 0 && (
+      {contracts && rows.length > 0 && (
         <>
           <div className="flex gap-2 mb-4 text-sm" role="tablist" aria-label="Lọc deposit">
             {(
@@ -141,10 +145,31 @@ export default function MyDeposits() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-subtle text-xs">Deposit #{d.id}</div>
-                    <div className="text-2xl font-display text-txt">{fmtToken(d.principal)} USDC</div>
+                    <div className="text-2xl font-display text-txt glow-num">{fmtToken(d.principal)} USDC</div>
                   </div>
                   <StatusBadge status={d.status} />
                 </div>
+                {/* Progress % thời gian đã gửi (startAt → maturityAt) */}
+                {Number(d.status) === STATUS_ACTIVE && Number(d.maturityAt) > 0 && (
+                  <div className="mt-3" aria-hidden>
+                    <div className="h-1.5 rounded-full bg-line/70 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-500"
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(
+                              100,
+                              ((nowSec - Number(d.startAt)) /
+                                Math.max(1, Number(d.maturityAt) - Number(d.startAt))) *
+                                100,
+                            ),
+                          ).toFixed(1)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
                 {!Number.isNaN(Number(d.maturityAt)) && (
                   <div className="text-xs mt-2">
                     <Countdown targetSec={d.maturityAt} nowSec={nowSec} showExact />
