@@ -4,6 +4,8 @@
 > **Ngày lập:** 2026-10-23 · **Phiên bản:** 1.0
 > **Nguồn:** `implementation_plan.md`, `extracted_assignment.txt`, `.agent/skills/architecture-designer`, `.agent/skills/ui-ux-pro-max`
 > **Biến thể cá nhân:** A = 4 (cuối MSSV), B = 3 (kề cuối) → grace **3 ngày**, APR **300 bps**, penalty **450 bps**, tenor **180 ngày**
+>
+> **📊 Tiến độ:** ✅ **P0** · ✅ **P1** (35/35 test, coverage 100%) · ⬜ P2+ · cập nhật 2026-10-23
 
 ---
 
@@ -32,8 +34,8 @@
 
 | # | Deliverable | Đường dẫn đích | Trạng thái |
 |---|---|---|---|
-| D1 | 3 smart contract + interfaces + mocks | `ac-hardhat-template-v2/contracts/**` | ⬜ |
-| D2 | Test suite ≥ 90% coverage, ≥ 76 test case | `ac-hardhat-template-v2/test/**` | ⬜ |
+| D1 | 3 smart contract + interfaces + mocks | `ac-hardhat-template-v2/contracts/**` | 🔄 (2/3: MockUSDC, VaultManager · thiếu SavingCore) |
+| D2 | Test suite ≥ 90% coverage, ≥ 76 test case | `ac-hardhat-template-v2/test/**` | 🔄 (35 test, coverage 100% cho 2 contract) |
 | D3 | Ignition module + scripts (seed, bot, export ABI, time-travel) | `ac-hardhat-template-v2/ignition/modules/`, `scripts/` | ⬜ |
 | D4 | Frontend React + Vite + ethers v6 + MetaMask | `frontend/**` | ⬜ |
 | D5 | README (variant, how-to-run, architecture, **Design Answers 7 câu**, C1–C5) | `README.md` (repo root) | ⬜ |
@@ -718,9 +720,9 @@ docs(readme): add design answers and variant table
 
 | Phase | Trạng thái | Ngày xong | Ghi chú |
 |---|---|---|---|
-| P0 Setup | ⬜ | | |
-| P1 Contracts core | ⬜ | | |
-| P2 SavingCore base | ⬜ | | |
+| P0 Setup | ✅ | 2026-10-23 | git init, network `localhost`, scripts sạch; T0.7 (dời OneDrive) để user quyết định — xem Risk R1 |
+| P1 Contracts core | ✅ | 2026-10-23 | MockUSDC + VaultManager + IVaultManager; 35/35 test; coverage 100% cho cả 2 |
+| P2 SavingCore base | 🔄 | | |
 | P3 Bonus C1–C5 | ⬜ | | |
 | P4 Tests + coverage | ⬜ | | |
 | P5 Deploy + bot | ⬜ | | |
