@@ -8,7 +8,15 @@
     "test": "hardhat test",
     "test:coverage": "hardhat test --coverage",
     "test:gas": "hardhat test --gas-stats",
-    "node": "hardhat node"
+    "node": "hardhat node",
+    "deploy:local": "hardhat --network localhost ignition deploy ignition/modules/BankDeposit.ts",
+    "deploy:sepolia": "hardhat --network sepolia ignition deploy ignition/modules/BankDeposit.ts",
+    "seed": "hardhat --network localhost run scripts/seed.ts",
+    "bot": "hardhat --network localhost run scripts/bot.ts",
+    "interact": "hardhat --network localhost run scripts/interact.ts",
+    "timetravel": "hardhat --network localhost run scripts/timeTravel.ts",
+    "withdraw": "hardhat --network localhost run scripts/withdraw.ts",
+    "export:frontend": "hardhat run scripts/exportFrontend.ts"
   },
   "keywords": [
     "hardhat",

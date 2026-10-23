@@ -10,7 +10,13 @@
     "test:gas": "npm --prefix ac-hardhat-template-v2 run test:gas",
     "node": "npm --prefix ac-hardhat-template-v2 run node",
     "deploy:local": "npm --prefix ac-hardhat-template-v2 run deploy:local",
-    "deploy:sepolia": "npm --prefix ac-hardhat-template-v2 run deploy:sepolia"
+    "deploy:sepolia": "npm --prefix ac-hardhat-template-v2 run deploy:sepolia",
+    "seed": "npm --prefix ac-hardhat-template-v2 run seed",
+    "bot": "npm --prefix ac-hardhat-template-v2 run bot",
+    "interact": "npm --prefix ac-hardhat-template-v2 run interact",
+    "timetravel": "npm --prefix ac-hardhat-template-v2 run timetravel",
+    "withdraw": "npm --prefix ac-hardhat-template-v2 run withdraw",
+    "export:frontend": "npm --prefix ac-hardhat-template-v2 run export:frontend"
   },
   "keywords": [
     "hardhat",
