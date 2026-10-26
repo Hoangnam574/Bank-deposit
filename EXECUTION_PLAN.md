@@ -1,11 +1,11 @@
-# 🚀 EXECUTION PLAN — Bank Deposit DApp (AT190234)
+# EXECUTION PLAN — Bank Deposit DApp (AT190234)
 
 > **Loại tài liệu:** Kế hoạch triển khai (task-level) — chuyển `implementation_plan.md` (thiết kế) thành các bước thi công có thứ tự, có cổng kiểm soát (quality gate) và tiêu chí hoàn thành (DoD).
 > **Ngày lập:** 2026-10-23 · **Phiên bản:** **1.1 (2026-10-26 — lộ trình lại còn 5 ngày, thêm Plan A/B + Open Questions)**
 > **Nguồn:** `implementation_plan.md`, `extracted_assignment.txt`, `.agent/skills/architecture-designer`, `.agent/skills/ui-ux-pro-max`
 > **Biến thể cá nhân:** A = 4 (cuối MSSV), B = 3 (kề cuối) → grace **3 ngày**, APR **300 bps**, penalty **450 bps**, tenor **180 ngày**
 >
-> **📊 Tiến độ:** ✅ **P0–P3** · ✅ **P4** (164 test, coverage 96.52%) · ✅ **P5** (gate local pass + Sepolia deploy/seed/verify 3/3) · ✅ **P6** (build clean + redesign v4 Binance language Playwright-verified + security pass gitleaks/audit + self-hosted fonts + ConfirmDialog in-app) · 🔄 **P7** (README khung xong; còn: video + coverage.png + tag v1.0 — xem §5 lộ trình 5 ngày Plan A/B) · cập nhật 2026-10-26
+> **Tiến độ:** [x] **P0–P3** · [x] **P4** (164 test, coverage 96.52%) · [x] **P5** (gate local pass + Sepolia deploy/seed/verify 3/3) · [x] **P6** (build clean + redesign v4 Binance language Playwright-verified + security pass gitleaks/audit + self-hosted fonts + ConfirmDialog in-app) · [~] **P7** (README khung xong; còn: video + coverage.png + tag v1.0 — xem §5 lộ trình 5 ngày Plan A/B) · cập nhật 2026-10-26
 
 ---
 
@@ -13,10 +13,10 @@
 
 | Ký hiệu | Ý nghĩa |
 |---|---|
-| ⬜ | Chưa làm |
-| 🔄 | Đang làm |
-| ✅ | Xong + đã qua DoD |
-| ⛔ | Bị chặn (ghi lý do + người gỡ) |
+| [ ] | Chưa làm |
+| [~] | Đang làm |
+| [x] | Xong + đã qua DoD |
+| [!] | Bị chặn (ghi lý do + người gỡ) |
 
 **Nguyên tắc thi công**
 
@@ -34,12 +34,12 @@
 
 | # | Deliverable | Đường dẫn đích | Trạng thái |
 |---|---|---|---|
-| D1 | 3 smart contract + interfaces + mocks | `ac-hardhat-template-v2/contracts/**` | ✅ (MockUSDC · VaultManager · SavingCore đầy đủ base + bonus C1–C5) |
-| D2 | Test suite ≥ 90% coverage, ≥ 76 test case | `ac-hardhat-template-v2/test/**` | ✅ (164 test, coverage tổng 96.52% lines — view: MockUSDC/VM 100%, SavingCore 96.88%, attacker 82%) |
-| D3 | Ignition module + scripts (seed, bot, export ABI, time-travel) | `ac-hardhat-template-v2/ignition/modules/`, `scripts/` | ⬜ |
-| D4 | Frontend React + Vite + ethers v6 + MetaMask | `frontend/**` | ⬜ |
-| D5 | README (variant, how-to-run, architecture, **Design Answers 7 câu**, C1–C5) | `README.md` (repo root) | ⬜ |
-| D6 | Video demo 3–5 phút | link YouTube/Drive trong README | ⬜ |
+| D1 | 3 smart contract + interfaces + mocks | `ac-hardhat-template-v2/contracts/**` | [x] (MockUSDC · VaultManager · SavingCore đầy đủ base + bonus C1–C5) |
+| D2 | Test suite ≥ 90% coverage, ≥ 76 test case | `ac-hardhat-template-v2/test/**` | [x] (164 test, coverage tổng 96.52% lines — view: MockUSDC/VM 100%, SavingCore 96.88%, attacker 82%) |
+| D3 | Ignition module + scripts (seed, bot, export ABI, time-travel) | `ac-hardhat-template-v2/ignition/modules/`, `scripts/` | [ ] |
+| D4 | Frontend React + Vite + ethers v6 + MetaMask | `frontend/**` | [ ] |
+| D5 | README (variant, how-to-run, architecture, **Design Answers 7 câu**, C1–C5) | `README.md` (repo root) | [ ] |
+| D6 | Video demo 3–5 phút | link YouTube/Drive trong README | [ ] |
 
 ### 1.2 Tiêu chí thành công (map theo thang điểm của đề)
 
@@ -155,55 +155,62 @@ Bank/
 
 ---
 
-## 5. Lộ trình 5 ngày còn lại (27 → 31/10/2026) — Plan A / Plan B
+> **Pham vi §5:** chia lai cac phase P0-P7 cua de bai thanh lich dung tron trong 5 ngay - dung lam (a) schedule checklist tai-kiem theo ngay, (b) lo trinh thi cong lai tu dau tren may khac, (c) mode Plan B rieng cho tung phase neu phase khong hoan thanh dung han (bang 5.2) - cac ngay con lai khong dich chuyen.
 
-> **Bối cảnh:** P0→P6 + phần lớn P7 đã xong (contracts 96.52% · deploy/seed/verify Sepolia 3/3 · frontend v4 Build-clean Playwright-verified · README + Security Plan khung đầy đủ). Việc còn lại chỉ là **gói bàn giao cuối**: video demo, coverage.png, gitleaks chốt, tag + nộp.
-> **Nguyên tắc:** Plan A là con đường đầy đủ; nếu tiến độ đi ngang 1 ngày hoặc gặp blocker → chuyển Plan B (bản rút gọn vẫn nộp đủ điểm base, chỉ cắt phần bonus/fancy mà có thể thay bằng bằng chứng tĩnh).
+### 5.1 Bang phan bo phase trong 5 ngay (Plan A)
 
-### 5.1 Plan A — đầy đủ (kế hoạch chính)
+| Ngay | Phases dong trong ngay | Noi dung / tai-kiem cu the | Cong (DoD) cuoi ngay |
+|---|---|---|---|
+| **D1 - 27/10 (T2)** | **P0 + P1** | P0: node + deploy + seed chay sach tu dau (Quick Start README). P1: `compile` 0 warning, `npm test` 164/164 xanh, gitleaks detect sach, ghi tag trang thai hien tai. | node local len · test 164/164 · gitleaks 0 leak · commit + cap nhat §12 |
+| **D2 - 28/10 (T3)** | **P2 + P3 + P5** | P2: 5 flow base chay 1 mach bang script (open -> timeTravel -> withdraw -> early -> renew). P3: tai-kiem C1 defer+claim, C3 partial, C4 top-up, C5 emergency (push pause qua 7 ngay). P5: chay lai gate local (deploy -> seed -> interact -> timeTravel -> bot renew); Sepolia da verified, chi show trong video. | moi flow chay bang script, khong fix tay · log bot renew presenter |
+| **D3 - 29/10 (T4)** | **P4** | `npx hardhat test --coverage` -> chup `docs/coverage.png`; quay lai cac canh video loi; upload YouTube Unlisted + nen Drive backup. | coverage.png co trong docs/ · link video luu san san (YouTube + Drive) |
+| **D4 - 30/10 (T5)** | **P6 + P7 (phan 1)** | P6: `npm run build` sach + Playwright smoke (console 0 loi, khong overflow 375/768/1440). P7: chen video link + Coverage section + `docs/coverage.png` vao README. | build clean + smoke pass · README nop-ready tru 2 muc cuoi |
+| **D5 - 31/10 (T6)** | **P7 (phan 2) - chot nop** | gitleaks detect cuoi -> `git tag v1.0` -> GitHub Release (notes) -> smoke test README Quick Start tren node sach -> zip (neu lop yeu cau) -> nop + buffer on oral (§10.2). | nop truoc deadline it nhat 1 buoi · tag v1.0 tren repo |
 
-| Ngày | Công việc | Kết quả phải có (DoD) |
-|---|---|---|
-| **Ngày 1 — 27/10 (T2)** | 1. Restart `npm run node` sạch → `deploy:local` → `seed` → chạy `interact` demo flow.<br>2. Quay video **cảnh 1–4** theo `docs/demo-script.md` (intro + dashboard + open deposit + approve/confirm dialog). | Bản quay thử cảnh 1–4, tiếng nói rõ; node local có dữ liệu demo sạch. |
-| **Ngày 2 — 28/10 (T3)** | 1. Quay tiếp **cảnh 5–8** (detail + renew + bot auto-renew + Sepolia show + outro).<br>2. Edit video (cut lỗi, thêm caption %APR/penalty — dùng CapCut/OBS). | Bản video draft 3–5 phút đầy đủ 8 cảnh. |
-| **Ngày 3 — 29/10 (T4)** | 1. `npx hardhat test --coverage` → chụp **`docs/coverage.png`** (bảng phân tích lines/statements/branches).<br>2. Xem video draft, quay lại cảnh lỗi nếu có.<br>3. Upload YouTube **Unlisted** → lấy link. | `docs/coverage.png` đúng; link YouTube Unlisted sẵn. |
-| **Ngày 4 — 30/10 (T5)** | 1. Chèn 🎥 Demo (YouTube link) + Coverage section + link `docs/coverage.png` vào README.<br>2. Chạy **gitleaks detect** cuối → fix bất kỳ flag nào.<br>3. `npm run build` final + `git tag v1.0` + **GitHub Release** kèm notes. | README hoàn chỉnh; gitleaks sạch; tag v1.0 + Release trên repo. |
-| **Ngày 5 — 31/10 (T6)** | 1. Smoke test cuối theo README: đọc từng bước Quick Start và làm lại từ đầu trên node sạch.<br>2. Nộp bài theo yêu cầu lớp (link repo + video + file nộp nếu có).<br>3. Buffer: ôn trả lời oral (§10.2 checklist). | Bài nộp xong trước deadline; người khác đọc README là chạy lại được từ đầu. |
+### 5.2 Plan B - contingency theo tung phase (kich hoat ngay khi phase khong chot duoc trong ngay cua no)
 
-### 5.2 Plan B — rút gọn (dự phòng khi không hoàn thành Plan A)
+| Phase | Trigger (hien tuong) | Plan B - hanh dong ngay trong ngay | Cut / du lieu thay the |
+|---|---|---|---|
+| **P0** Setup | OneDrive lock / node khong len > 30 phut | Doi repo ra `C:\dev\Bank` (da test chay duoc) hoac pause OneDrive sync; khong sua config khac | Khong cat gi - chi doi cho |
+| **P1** Contracts | Test do nen tang, khong fix duoc trong 2h | Gop 3 contract ve 1 file (MockUSDC + VaultManager + SavingCore toi gian); tap trung ngay 2 muc cao nhat: solvency (C2) + access control | Cat C3-C5; ghi caz chan trong README |
+| **P2** SavingCore base | Log design conflict hon du kien (snapshot/pause/solvency) | giu 5 flow base + snapshot APR/penalty (FR bat buoc); Cat views mo rong (`previewMaturity`/`getPlan`/`getUserDepositIds`) - frontend tu tinh local | Khong cat flow base |
+| **P3** Bonus C1-C5 | Base chu chot, khong kip lam bonus | Cat C3/C4 truoc, giu C1 (defer + claim) + C2 (solvency) - de bao ve nhat | Neu base van loi -> cat toan bo bonus, chi giu base + README note |
+| **P4** Tests + coverage | Coverage gap o nhanc attacker/mock timeMartin | Bo test theo ma tran §7; gap con lai (MaliciousDepositor/mock) note ro trong README, chap nhan <100% | coverage.png cat -> dung text stdout copy vao README |
+| **P5** Deploy/scripts/bot | Sepolia RPC cham / faucet tu cau | Deploy local-only + seed; Sepolia chiu cat (video chi show 10 giay trang Etherscan verified da chup san) | Cut live Sepolia demo |
+| **P6** Frontend | Build/layout chu chot, can lam admin page | Giam con 3 page Dashboard/Open/Detail (Deposits gop vao Dashboard); bo Admin redesign/skeleton/animation fancy; giu tokens + ConfirmDialog (bat buoc vi security) | Cut Admin page thanh read-only info, skeleton loader, fancy animation, font tuy chinh |
+| **P7** Docs + video | Video chu quay xong / edit chu xong | Video chi con 4 canh (dashboard + open deposit + withdraw + bot auto-renew); README uu tien Design Answers 7 cau + how-to-run | Cat GitHub Release - giu tag v1.0; cat canh detail/renew video |
 
-| Điều kiện kích hoạt (trigger) | Hành động rút gọn | Cái gì bị cắt (cut) |
-|---|---|---|
-| **Cuối ngày 2** chưa có bản quay đầu tiên | Bỏ cảnh 3–4 demo approve từng bước; video demo chỉ còn **4 cảnh** (dashboard + open deposit 1 lần + withdraw + bot auto-renew). | Mất 2 cảnh demo chi tiết — bù bằng caption nhanh trên video về approve/penalty %. |
-| **Ngày 3** YouTube chưa upload được (hàng đợi review channel) | Nén video → upload lên Drive (public + Anyone with link view); ghi Drive link thay YouTube Unlisted. | YouTube không còn là link chính — Drive trở thành link chính. |
-| **Ngày 3** `--coverage` lỗi/cache → không chụp được PNG | Dùng output text của coverage (copy stdout) đóng khung và chèn vào README; PNG thành **optional**. | Không có PNG — vẫn đủ tiêu chí "coverage > 90% có report" bằng text. |
-| **Ngày 4** tag/Release GitHub còn chưa quen | Chỉ dùng `git tag v1.0` (bỏ GitHub Release); release notes ghi nhanh 9 dòng bullet vào README thay thế. | GitHub Release bị cắt — tag v1.0 vẫn là chứng cứ phiên bản nộp. |
-| **Ngày 4** gitleaks flag chuỗi nào đó | Flag mới có thể do chuỗi demo vô tình dính; xử lý bằng allowlist trong `.gitleaks.toml` hoặc sửa bỏ chuỗi đó rồi commit lại 1 lần. | Gitleaks vẫn phải pass trước commit — không bypass; phải resolve hẳn. |
-| **Ngày 5** buffer không đủ smoke-test README kịp | Nộp bằng như hiện tại (README đã được dàn lại khi redesign v4, nội dung ổn định) + video Drive; nếu có bug nhỏ, sửa bằng v1.0.1 sau khi nộp. | Đảm bảo nộp **trước** deadline đúng 1 phiên bản đầy đủ. |
+**Fallback ky thuat chung (dung cho ca Plan A va Plan B):**
 
-**Fallback kỹ thuật trong lúc quay video (áp dụng cho cả Plan A/B):**
-
-| Sự cố lúc quay | Phương án |
+| Su co | Phuong an |
 |---|---|
-| Sepolia RPC chậm/không ổn định | Demo chính tập trung local (chain 31337); Sepolia chỉ **show trong ~10s**: mở Etherscan trang verified contracts + dùng sẵn screenshot nếu live demo treo |
-| MetaMask popup mỗi transaction phải bấm 2 lần | Import sẵn key #1 Alice vào MetaMask làm account chính (đã làm); quay theo flow chuẩn trong demo-script để timing không phụ thuộc thao tác tay nhanh |
-| Bot nền không auto-renew (deposit chưa mature, chờ mãi) | Dùng script `timeTravel` đẩy thời gian qua maturity trước khi quay cảnh bot (có sẵn trong demo-script); nếu vẫn lỗi, quay bot trên deposit #1 đã seed sẵn mature |
-| OneDrive lock file trong lúc `compile`/`build` | Pause OneDrive sync trong 30 phút quay/edit; hoặc tạm dùng copy repo ở `C:\dev\Bank` (đã test chạy được ở đó) |
+| Sepolia RPC cham/khong on dinh | Demo chinh tap trung local (chain 31337); Sepolia chi show ~10s: mo Etherscan trang verified + dung screenshot san neu live demo treo |
+| MetaMask popup moi tx phai bam 2 lan | Import san key #1 Alice vao MetaMask lam account chinh; quay theo flow chuan trong demo-script de timing khong phu thuoc thao tac tay |
+| Bot nen khong auto-renew | Dung script `timeTravel` day thoi gian qua maturity truoc khi quay canh bot; neu van loi, quay bot tren deposit #1 da seed san mature |
+| OneDrive lock file luc `compile`/`build` | Pause OneDrive sync 30 phut; hoac dung copy repo o `C:\dev\Bank` (da test chay duoc) |
 
-### 5.3 Open Questions — cần chốt trong 5 ngày
+### 5.3 Cong kiem soat cuoi moi ngay
 
-| # | Câu hỏi | Mặc định (giả định nếu không được chốt) | Ai chốt | Deadline |
+| Ngay | Gio chot | Dieu kien di qua cong |
+|---|---|---|
+| D1-D4 | 22:00 | (1) `npm test` 164/164; (2) `npx hardhat test --coverage` giu >= 90% hoac da note gap ro; (3) gitleaks detect sach truoc MOM commit; (4) `npm run build` pass neu dong frontend; (5) cap nhat §12 trang thai + ghi chu. Tre gio chua dat -> kich hoat Plan B theo bang 5.2 roi commit trang thai Plan B, khong om qua ngai sau |
+| **D5** | 18:00 | nop hoan tat: repo public, video link + coverage.png trong README, tag v1.0 (gitleaks sach ngay truoc tag), §12 khep lai. Sau 18:00 khong them tinh nang - chi fix loi neu con |
+
+> **Quy tac chuyen Plan A -> Plan B:** chuyen ngay trong ngay cua phase khi ca 2 dieu kien dung: (1) cong DoD cuoi ngay khong dat; (2) buffer 1 gio da het. Ghi trang thai chuyen vao §12; neu Plan B lam nhanh hon du kien thi quay lai Plan A ngay o ngay sau.
+
+### 5.4 Open Questions - 7 cau ky thuat de 8.2 (tra loi day du tai README §4 Design Answers)
+
+| # | Cau hoi (de 8.2) | Loi tra loi v1.0 | Code pointer | Test chung minh |
 |---|---|---|---|---|
-| **OQ1** | **Deadline chính xác là ngày nào?** (31/10? 05/11? giờ nào?) | **31/10/2026 cuối ngày** — nên cả Plan A/B đều chốt vào 31/10 | User (từ giảng viên) | ⏰ ngay chiều Ngày 1 |
-| **OQ2** | Video nộp **YouTube Unlisted hay Drive public**? Giảng viên có yêu cầu format riêng không? | YouTube Unlisted + Drive backup (cả 2 link đều trong README) | User | trước Ngày 3 |
-| **OQ3** | Nộp bằng **link GitHub hay zip nộp trực tiếp**? Nếu zip thì có cần loại `node_modules`? | GitHub link là chính; kèm `zip` sạch (không node_modules) nếu yêu cầu | User | trước Ngày 4 |
-| **OQ4** | Có cần **GitHub Release công khai** hay chỉ tag v1.0 là đủ? | Tag v1.0 + Release với notes 9 bullet (10 phút, làm luôn) | User | Ngày 4 |
-| **OQ5** | Dời repo ra `C:\dev\Bank` (rủi ro R1 OneDrive) — chuyển hẳn hay giữ nguyên + pause sync khi build? | Giữ nguyên + pause sync (đã chạy ổn 3 ngày liền); dời chỉ khi compile lại bị lock file | User | trước Ngày 3 |
-| **OQ6** | Slither/Aderyn/static analysis **bonus** có làm nữa không? (đã pass manual audit riêng: reentrancy/CEI/immutable/pause/solvency) | **Không làm** — 164 test + MaliciousDepositor + manual audit là đủ; Slither chỉ làm nếu Ngày 3 vẫn còn thừa >2h rảnh | User | Ngày 3 decision point |
-| **OQ7** | “Design Answers” 7 câu có cần bảo vệ nói gì thêm/prepare script riêng cho oral check? | Dùng §10.2 checklist oral defense có sẵn trong EXECUTION_PLAN (30–60s/câu) — thêm slide không cần | User | Ngày 5 |
+| **Q1** | NFT chuyen nhuong truoc maturity thi ai rut tien? (transferable certificate) | Quyen rut thuoc **chu hien tai cua NFT** (`ownerOf(depositId)` - quyen di theo certificate); Alice ban xong thi khong rut duoc nua | `SavingCore.sol:177` `onlyDepositOwner` (doc live `ownerOf`), `:704` `_update` | `Security.test.ts` S3/S4 (T-A2/T-A3): owner moi withdraw duoc, owner cu revert; NFT da burn khong transfer |
+| **Q2** | Vault khong du tien tra lai vao maturity? | Tra **principal ngay**, lai ghi `pendingInterest[owner]`, claim khi vault du (C1); C2 chan admin rut vault lam mat cam ket (`VM_Insolvent`) | `SavingCore.sol:310` `withdrawAtMaturity`, `:354` `claimPendingInterest`; `VaultManager.sol:119-123` | `SavingCore.bonus.test.ts` C1 (defer + claim khi vault re-fund); `VaultManager.test.ts` bien insolvent +1 unit revert |
+| **Q3** | Bot che 1 thang - deposits qua grace mat gi? | Khong mat gi: `autoRenewDeposit` **permissionless** (ai cung goi duoc); user tu chay luc mat dien hoac `withdrawAtMaturity`/`renewDeposit` thu cong van mo | `SavingCore.sol:554` `autoRenewDeposit` (khong han che caller) | `SavingCore.base.test.ts` case renew thu cong sau grace (T-A7, #53) |
+| **Q4** | Rounding dust ve ai? Co gay revert/sai so du khong? | Floor (multiply-before-divide) - dust **o lai vault** (protocol), khong ve user; interest co the = 0, **khong revert**, khong sai so du | `SavingCore.sol:588` `previewInterest` (view, floor) | `Security.test.ts` S5 (T-A19): deposit 1 unit -> lai 0, khong revert, dust o vault |
+| **Q5** | Tai dung `maturityAt` la early hay at-maturity? Cuoi grace con renew thu cong duoc khong? | `withdrawAtMaturity`/`renewDeposit` dung `now >= maturityAt`; `earlyWithdraw` dung `now < maturityAt` - manual renew khong co upper bound (bot chua goi thi user giu truoc thang); auto-renew chi tu `maturityAt + 3 days` | Requires trong `:310` (`>=`), `:371` (`<`), `:562` (`+ GRACE_PERIOD`) | `SavingCore.base.test.ts` #34 (1 giay som revert), #35 (dung giay maturity pass, Q5), bien `+3d - 1` / `+3 d` |
+| **Q6** | Admin disable plan khi con deposits active? | Deposit cu van accrue + withdraw/renew + auto-renew binh thuong (snapshot theo `planIdAtOpen`); chi mo moi/renew vao plan do bi chan `SC_PlanNotEnabled` | `:284` (openDeposit chan), `:522` (renewDeposit chan vao plan disabled) | `SavingCore.base.test.ts` #12/#18 (chan new deposit), #40 (withdraw van chay khi plan disabled, Q6) |
+| **Q7** | Mot attack thuc te + co che chan? | Reentrancy qua `safeTransferFrom`/`_safeMint` hook cua token/NFT doc - chan bang `nonReentrant` + CEI (status + burn + giam owed **truoc** moi external call) | Ket hop `ReentrancyGuard` + thu tu effects truoc interactions toi gan `:310` | `Security.test.ts` S1/S2 (T-A18): attack script tai-tao re-enter withdraw -> 0 attack thanh cong |
 
-> **Quy tắc Plan A → Plan B:** chuyển chỉ khi cả 2 điều kiện đúng: (1) có trigger trong bảng 5.2 **và** (2) OQ tương ứng không chốt kịp. Ghi lại vào §12 khi chuyển.
-
+> **Note for grading:** giang vien se thay 2-3 cau bat ky va co the doi so bien the (vi du "neu penalty = 0 bps?") - on oral theo §10.2, moi cau co san code pointer + test de bat may minh chung song voi code tren man hinh. Cac cau hoi van hanh (deadline dung ngay, format nop link video Drive/YouTube, zip co bo node_modules) mac dinh: deadline 31/10, YouTube Unlisted + Drive backup, zip sach neu yeu cau - chot voi giang vien ngay D1 theo cong §5.3.
 ---
 
 ## 6. Chi tiết task
@@ -326,7 +333,7 @@ Bank/
 
 **Gate P3:** Toàn bộ 5 base flow + 5 bonus flow có test riêng; `totalOwedInterest` invariant xanh; không có hàm nào thiếu test happy path.
 
-> ⚠️ **Thứ tự ưu tiên nếu hết thời gian:** C1 + C2 (dễ bảo vệ, ăn điểm thiết kế) → C4 → C5 → C3. Ghi rõ trong README nếu bỏ.
+>  **Thứ tự ưu tiên nếu hết thời gian:** C1 + C2 (dễ bảo vệ, ăn điểm thiết kế) → C4 → C5 → C3. Ghi rõ trong README nếu bỏ.
 
 ---
 
@@ -405,10 +412,10 @@ Bank/
 | T5.4 | `scripts/exportFrontend.ts` | Đọc artifacts + `deployed_addresses.json` theo chainId → ghi `frontend/src/abis/*.json`, `frontend/src/config/addresses.json` | Frontend build không cần sửa tay |
 | T5.5 | `scripts/timeTravel.ts` | `evm_increaseTime` + `evm_mine` (local only), tham số ngày | Demo maturity trong 1 phút |
 | T5.6 | `scripts/interact.ts` | Smoke flow CLI: approve → open → time travel → withdraw, in before/after balance | Chạy được trên localhost |
-| T5.7 | Deploy Sepolia | ✅ Deployed 2026-10-26: `HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=true npx hardhat --network sepolia ignition deploy ignition/modules/BankDeposit.ts --verify`; seed `--network sepolia` (guard 1-signer); addresses đã lưu vào README §2.3 + `addresses.json` | MockUSDC `0xF203…d67e` · Vault `0x6364…55E9` · Core `0x51Bd…6205` |
-| T5.8 | Verify | ✅ Ignition `--verify` tự chạy: 3/3 contracts **verified** trên Etherscan `#code` + Sourcify (MyToken/MyNFT cũ của template đã onDelete sót trong journal chain-11155111 — vô hại, không artifact) | Etherscan OK |
+| T5.7 | Deploy Sepolia | [x] Deployed 2026-10-26: `HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=true npx hardhat --network sepolia ignition deploy ignition/modules/BankDeposit.ts --verify`; seed `--network sepolia` (guard 1-signer); addresses đã lưu vào README §2.3 + `addresses.json` | MockUSDC `0xF203…d67e` · Vault `0x6364…55E9` · Core `0x51Bd…6205` |
+| T5.8 | Verify | [x] Ignition `--verify` tự chạy: 3/3 contracts **verified** trên Etherscan `#code` + Sourcify (MyToken/MyNFT cũ của template đã onDelete sót trong journal chain-11155111 — vô hại, không artifact) | Etherscan OK |
 
-**Gate P5:** Trên localhost: deploy → seed → open deposit → time travel → bot renew → withdraw, tất cả bằng script, không thao tác tay. ✅ (2026-10-23) · Sepolia: deploy + seed + export ✅ (2026-10-26)
+**Gate P5:** Trên localhost: deploy → seed → open deposit → time travel → bot renew → withdraw, tất cả bằng script, không thao tác tay. [x] (2026-10-23) · Sepolia: deploy + seed + export [x] (2026-10-26)
 
 ---
 
@@ -726,16 +733,16 @@ docs(readme): add design answers and variant table
 
 | Phase | Trạng thái | Ngày xong | Ghi chú |
 |---|---|---|---|
-| P0 Setup | ✅ | 2026-10-23 | git init, network `localhost`, scripts sạch; T0.7 (dời OneDrive) để user quyết định — xem Risk R1 |
-| P1 Contracts core | ✅ | 2026-10-23 | MockUSDC + VaultManager + IVaultManager; 35/35 test; coverage 100% cho cả 2 |
-| P2 SavingCore base | ✅ | 2026-10-23 | SavingCore.sol (5 flow base + views); 121/121 test xanh; coverage 97.53% line |
-| P3 Bonus C1–C5 | ✅ | 2026-10-23 | C1 defer+claim, C3 partial, C4 top-up, C5 emergency + views isMatured/getUserDepositIds; 156/156 test; coverage 96.88% |
-| P4 Tests + coverage | ✅ | 2026-10-23 | 164 test (MockUSDC 5 · VM 30 · SC base 86 · bonus 35 · Security 8); coverage 96.52% lines; MaliciousDepositor 0 lượt attack thành công |
-| P5 Deploy + bot | ✅ (T5.7/T5.8 Sepolia deploy + seed + verify 2026-10-26) | 2026-10-23 | Ignition module BankDeposit.ts + seed/bot/interact/timeTravel/withdraw/exportFrontend; gate P5 chạy 1 mạch trên localhost (deploy → seed → open → timeTravel → bot renew #1/#4 → withdraw lãi ghép 5,000→5,073.97→5,149.04); seed idempotent · **Sepolia 2026-10-26**: 3 contracts deployed + verified (Etherscan #code + Sourcify) — MockUSDC `0xF20376156c60FCC68DC360e216A350eAA453d67e`, Vault `0x6364C8b3042cf79A184062e4e56233fF489E55E9`, Core `0x51Bdfd36F72E554831529946c8B0a2A3D4346205`; seed 4 plan + vault 500k USDC (guard 1-signer cho mạng public); `addresses.json` nhận chain 11155111 |
-| P6 Frontend | ✅ (T6.16 E2E full-flow chờ demo manual với MetaMask) | 2026-10-26 | Vite+React-TS+Tailwind v4 (`@theme` tokens, Orbitron/Exo 2); Wallet/Contracts/Toast providers; NetworkGuard + Faucet; 5 pages (Dashboard/Open/Deposits/Detail/Admin); `npm run build` TS-clean; dev server serve OK với deploy+seed local · **UI redesign v3** (5 skill frontend — ui-ux-pro-max/redesign/high-end/design-taste/web-design-guidelines + quality pass vercel-react-*): tokens & component layer `.card/.eyebrow/.num/.btn*/.progress-*` scaleX GPU, skeleton loaders toàn route, sticky nav island blur, bento bất đối xứng + filler CTA, segmented filter `aria-pressed`, a11y sr-only/aria-busy · **Playwright-verified**: console 0 errors, 0 overflow 375/768/1024/1440, keyboard focus, skeleton shape match · **Fix bug P0** ContractsProvider key mismatch addresses.json (crash trắng trang khi có ví) · security pass: grep sinks 0, npm audit prod 0, gitleaks 0 leaks (SECURITY_PLAN §3b/§3c) |
-| P7 Docs + demo | 🔶 in progress (còn: video + coverage.png + tag v1.0) | 2026-10-24 (đang tiếp) | README.md root (variant table, quick start, architecture, Design Answers 7 câu + code pointer, C1–C5 table, coverage, video script, limitations); SECURITY_PLAN.md (threat model + roadmap S1–S4); npm audit 0 vuln (prod deps); UI redesign v4 + ConfirmDialog in-app + fonts self-host xong. Sepolia xong 2026-10-26 (3 contracts verified Etherscan/Sourcify + seed 4 plan + vault 500k USDC). **Còn lại: quay video (§5 Plan A/B), chụp coverage.png, gitleaks cuối, tag v1.0** |
-| P6b UI redesign v4 (Binance language) | ✅ | 2026-10-26 | Restyle toàn frontend theo spec `DESIGN.md` (Binance design analysis): tokens mới — canvas `#0B0E11`, card `#1E2329`, hairline `#2B3139`, yellow `#FCD535` accent duy nhất (CTA black-on-yellow `#181A20`), trading green `#0ECB81`/red `#F6465D`, info `#3B82F6` focus ring; fonts Inter + IBM Plex Mono (substitute BinanceNova/Plex), bỏ Orbitron/Exo 2; flat surface — removed hero-gradient/purple/glow/blur/shadows; nav full-width flat + footer sáng `#FAFAFA` (Binance transactional flip); `.num` mono tabular (utilities cascade); field filled-step + radius 6/8/12px. `npm run build` pass · Playwright-verified: console 0 errors, screenshots 375/768/1440 dashboard + open/deposits/admin/detail (`.playwright-cli/audit4-*.png`) |
-| P7b UX fixes (2026-10-26) | ✅ | 2026-10-26 | ConfirmDialog in-app (`ConfirmProvider` + `useConfirm() → Promise<boolean>`) thay toàn bộ `window.confirm` — 5 confirm in DepositDetail chuyển modal (rút sớm/emergency tone danger nút đỏ); penalty hiển thị % (InfoBox `−4.50%` + dòng phụ ≈ USDC theo principal); not-found page `/deposit/:id` (SearchX + CTA về sổ/trang chủ); plan disabled bị ẩn khỏi OpenDeposit/Dashboard (Admin vẫn hiện nhiều + thẻ tạm ngưng); header single-row. Fonts self-host Inter + IBM Plex Mono (fontsource, subset vietnamese), bỏ Google Fonts CDN |
+| P0 Setup | [x] | 2026-10-23 | git init, network `localhost`, scripts sạch; T0.7 (dời OneDrive) để user quyết định — xem Risk R1 |
+| P1 Contracts core | [x] | 2026-10-23 | MockUSDC + VaultManager + IVaultManager; 35/35 test; coverage 100% cho cả 2 |
+| P2 SavingCore base | [x] | 2026-10-23 | SavingCore.sol (5 flow base + views); 121/121 test xanh; coverage 97.53% line |
+| P3 Bonus C1–C5 | [x] | 2026-10-23 | C1 defer+claim, C3 partial, C4 top-up, C5 emergency + views isMatured/getUserDepositIds; 156/156 test; coverage 96.88% |
+| P4 Tests + coverage | [x] | 2026-10-23 | 164 test (MockUSDC 5 · VM 30 · SC base 86 · bonus 35 · Security 8); coverage 96.52% lines; MaliciousDepositor 0 lượt attack thành công |
+| P5 Deploy + bot | [x] (T5.7/T5.8 Sepolia deploy + seed + verify 2026-10-26) | 2026-10-23 | Ignition module BankDeposit.ts + seed/bot/interact/timeTravel/withdraw/exportFrontend; gate P5 chạy 1 mạch trên localhost (deploy → seed → open → timeTravel → bot renew #1/#4 → withdraw lãi ghép 5,000→5,073.97→5,149.04); seed idempotent · **Sepolia 2026-10-26**: 3 contracts deployed + verified (Etherscan #code + Sourcify) — MockUSDC `0xF20376156c60FCC68DC360e216A350eAA453d67e`, Vault `0x6364C8b3042cf79A184062e4e56233fF489E55E9`, Core `0x51Bdfd36F72E554831529946c8B0a2A3D4346205`; seed 4 plan + vault 500k USDC (guard 1-signer cho mạng public); `addresses.json` nhận chain 11155111 |
+| P6 Frontend | [x] (T6.16 E2E full-flow chờ demo manual với MetaMask) | 2026-10-26 | Vite+React-TS+Tailwind v4 (`@theme` tokens, Orbitron/Exo 2); Wallet/Contracts/Toast providers; NetworkGuard + Faucet; 5 pages (Dashboard/Open/Deposits/Detail/Admin); `npm run build` TS-clean; dev server serve OK với deploy+seed local · **UI redesign v3** (5 skill frontend — ui-ux-pro-max/redesign/high-end/design-taste/web-design-guidelines + quality pass vercel-react-*): tokens & component layer `.card/.eyebrow/.num/.btn*/.progress-*` scaleX GPU, skeleton loaders toàn route, sticky nav island blur, bento bất đối xứng + filler CTA, segmented filter `aria-pressed`, a11y sr-only/aria-busy · **Playwright-verified**: console 0 errors, 0 overflow 375/768/1024/1440, keyboard focus, skeleton shape match · **Fix bug P0** ContractsProvider key mismatch addresses.json (crash trắng trang khi có ví) · security pass: grep sinks 0, npm audit prod 0, gitleaks 0 leaks (SECURITY_PLAN §3b/§3c) |
+| P7 Docs + demo | [~] in progress (còn: video + coverage.png + tag v1.0) | 2026-10-24 (đang tiếp) | README.md root (variant table, quick start, architecture, Design Answers 7 câu + code pointer, C1–C5 table, coverage, video script, limitations); SECURITY_PLAN.md (threat model + roadmap S1–S4); npm audit 0 vuln (prod deps); UI redesign v4 + ConfirmDialog in-app + fonts self-host xong. Sepolia xong 2026-10-26 (3 contracts verified Etherscan/Sourcify + seed 4 plan + vault 500k USDC). **Còn lại: quay video (§5 Plan A/B), chụp coverage.png, gitleaks cuối, tag v1.0** |
+| P6b UI redesign v4 (Binance language) | [x] | 2026-10-26 | Restyle toàn frontend theo spec `DESIGN.md` (Binance design analysis): tokens mới — canvas `#0B0E11`, card `#1E2329`, hairline `#2B3139`, yellow `#FCD535` accent duy nhất (CTA black-on-yellow `#181A20`), trading green `#0ECB81`/red `#F6465D`, info `#3B82F6` focus ring; fonts Inter + IBM Plex Mono (substitute BinanceNova/Plex), bỏ Orbitron/Exo 2; flat surface — removed hero-gradient/purple/glow/blur/shadows; nav full-width flat + footer sáng `#FAFAFA` (Binance transactional flip); `.num` mono tabular (utilities cascade); field filled-step + radius 6/8/12px. `npm run build` pass · Playwright-verified: console 0 errors, screenshots 375/768/1440 dashboard + open/deposits/admin/detail (`.playwright-cli/audit4-*.png`) |
+| P7b UX fixes (2026-10-26) | [x] | 2026-10-26 | ConfirmDialog in-app (`ConfirmProvider` + `useConfirm() → Promise<boolean>`) thay toàn bộ `window.confirm` — 5 confirm in DepositDetail chuyển modal (rút sớm/emergency tone danger nút đỏ); penalty hiển thị % (InfoBox `−4.50%` + dòng phụ ≈ USDC theo principal); not-found page `/deposit/:id` (SearchX + CTA về sổ/trang chủ); plan disabled bị ẩn khỏi OpenDeposit/Dashboard (Admin vẫn hiện nhiều + thẻ tạm ngưng); header single-row. Fonts self-host Inter + IBM Plex Mono (fontsource, subset vietnamese), bỏ Google Fonts CDN |
 
 ---
 
