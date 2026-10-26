@@ -1,6 +1,6 @@
 /*
  * Design tokens + base styles (v4 — Binance design language per DESIGN.md)
- * Fonts: Inter (BinanceNova substitute) + IBM Plex Mono cho số (.num) — link ở index.html
+ * Fonts: Inter Variable (BinanceNova substitute) + IBM Plex Mono cho số (.num) — tự host qua fontsource
  * Nguyên tắc v4: canvas đen sâu #0B0E11, card #1E2329 phẳng (zero gradient/glow/glass),
  * yellow #FCD535 là accent DUY NHẤT (black-on-yellow CTA), hairline #2B3139,
  * trading green/red cho hướng tăng/giảm.
@@ -32,8 +32,8 @@
   --color-info: #3b82f6; /* focus ring */
 
   /* Fonts — BinanceNova/Plex không public: Inter + IBM Plex Mono thay thế */
-  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
 
   /* Motion curve (mềm, functional ~200ms) */
@@ -62,6 +62,7 @@
   h2,
   h3 {
     font-family: var(--font-display);
+    font-weight: 600; /* DESIGN.md: display sizes dùng weight 600-700 */
     color: #ffffff; /* headline trắng — body giữ #EAECEF */
   }
   /* Văn bản dài: tránh từ mồ côi ở dòng cuối (redesign audit) */
