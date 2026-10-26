@@ -69,7 +69,7 @@ npm run build   # tsc -b && vite build — TS strict, pass
 
 MetaMask: **Add network → RPC `http://127.0.0.1:8545` chainId 31337**, rồi **import private key** một account hardhat (ví dụ account #0 `0xac0974bec39a17e36ba…` — xem `npm run node` in ra 20 key). Trang "/" hiện 4 plan, faucet 1.000 USDC ở navbar.
 
-**Design v4 (Binance design language — spec tại `DESIGN.md`)**: canvas đen sâu `#0B0E11`, card phẳng `#1E2329` + hairline `#2B3139` (zero gradient/glow/glass), yellow `#FCD535` là accent duy nhất (CTA black-on-yellow), trading green `#0ECB81`/red `#F6465D` cho tín hiệu tăng/giảm, footer sáng `#FAFAFA` (transactional surface flip). Số liệu dùng IBM Plex Mono tabular, body Inter.
+**Design v4 (Binance design language — spec tại `DESIGN.md`)**: canvas đen sâu `#0B0E11`, card phẳng `#1E2329` + hairline `#2B3139` (zero gradient/glow/glass), yellow `#FCD535` là accent duy nhất (CTA black-on-yellow), trading green `#0ECB81`/red `#F6465D` cho tín hiệu tăng/giảm, footer sáng `#FAFAFA` (transactional surface flip). Số liệu dùng IBM Plex Mono tabular, body Inter. Shell layout kiểu Binance: header full-bleed (logo sát mép trái, cụm ví sát mép phải) + content shell `max-w-[1680px]`, footer ghim đáy viewport qua flex column `min-h-dvh` (không nảy layout khi kết nối ví).
 
 ### 2.3 Sepolia
 

@@ -95,7 +95,7 @@ export default function MyDeposits() {
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-16">
+    <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
       <div className="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6">
         <div>
           <span className="eyebrow">NFT receipts</span>

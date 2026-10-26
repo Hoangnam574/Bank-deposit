@@ -166,7 +166,7 @@ export default function DepositDetail() {
 
   if (notFound) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
+      <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 py-16 text-subtle text-center">
         <Info className="mx-auto inline text-subtle" size={40} aria-hidden />
         <p>Không tìm thấy deposit #{depositId} (NFT có thể đã burn sau khi rút).</p>
         <Link to="/deposits" className="btn btn-outline mt-4 cursor-pointer">
@@ -177,7 +177,7 @@ export default function DepositDetail() {
   }
   if (!contracts) {
     return (
-      <main className="mx-auto max-w-5xl px-4 pb-10">
+      <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-10">
         <NoDeploymentState page="Chi tiết deposit" />
       </main>
     );
@@ -185,7 +185,7 @@ export default function DepositDetail() {
   if (!d || !pv) {
     /* Loading — skeleton khớp shape trang (không spinner/text treo) */
     return (
-      <main className="mx-auto max-w-3xl px-4 pb-20" aria-busy="true">
+      <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-20" aria-busy="true">
         <div className="skeleton mt-8 h-8 w-28" aria-hidden />
         <div className="skeleton mt-4 h-28 w-full !rounded-2xl" aria-hidden />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6" aria-hidden>
@@ -208,7 +208,7 @@ export default function DepositDetail() {
   );
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pb-20">
+    <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-20">
       <button
         type="button"
         onClick={() => navigate(-1)}

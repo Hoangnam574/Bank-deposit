@@ -120,7 +120,7 @@ export default function OpenDeposit() {
   void navigate; // (dùng ở "tương lai" chuyển detail sau khi mined ok — optional)
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-16">
+    <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
       <div className="mt-8">
         <span className="eyebrow">Mở deposit mới</span>
         <h1 className="mt-3 text-4xl font-bold font-display tracking-tight">Mở tiết kiệm</h1>

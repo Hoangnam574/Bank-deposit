@@ -39,7 +39,7 @@ export default function StatStrip() {
   if (!address || !contracts || !hasDeployment) return null;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pt-4">
+    <div className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pt-4">
       <div className="card !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 divide-x divide-line">
         <Tile
           icon={<Coins size={14} />}

@@ -22,32 +22,37 @@ export default function App() {
       <ToastProvider>
         <ContractsProvider>
           <HashRouter>
-            <Navbar />
-            <NetworkGuard />
-            <StatStrip />
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/open" element={<OpenDeposit />} />
-              <Route path="/deposits" element={<MyDeposits />} />
-              <Route path="/deposit/:id" element={<DepositDetail />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            {/* Footer-light (Binance signature: transactional surface flip)
-                — cùng yellow language nhưng canvas trắng #FAFAFA/ink */}
-            <footer
-              className="py-10 text-center text-xs text-ink/70"
-              style={{
-                backgroundColor: "#fafafa",
-                paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))",
-              }}
-            >
+            {/* Shell flex column: footer luôn ghim đáy viewport kể cả khi nội dung ngắn */}
+            <div className="flex min-h-dvh flex-col">
+              <Navbar />
+              <NetworkGuard />
+              <StatStrip />
+              <div className="flex-1">
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/open" element={<OpenDeposit />} />
+                  <Route path="/deposits" element={<MyDeposits />} />
+                  <Route path="/deposit/:id" element={<DepositDetail />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </div>
+              {/* Footer-light (Binance signature: transactional surface flip)
+                  — cùng yellow language nhưng canvas trắng #FAFAFA/ink */}
+              <footer
+                className="mt-10 border-t border-hairline-light py-10 text-center text-xs text-ink/70"
+                style={{
+                  backgroundColor: "#fafafa",
+                  paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))",
+                }}
+              >
               <p className="text-ink font-semibold">Bank Deposit DApp</p>
               <p className="mt-1">
                 AT190234 · USDC 6 decimals · grace 3 ngày · APR 300 bps · penalty 450 bps
               </p>
-            </footer>
-          </HashRouter>
+                </footer>
+              </div>
+            </HashRouter>
         </ContractsProvider>
       </ToastProvider>
     </WalletProvider>
@@ -56,7 +61,7 @@ export default function App() {
 
 function NotFound() {
   return (
-    <main className="mx-auto max-w-5xl px-4 py-16 text-center text-subtle">
+    <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 py-16 text-center text-subtle">
       Trang không tồn tại —{" "}
       <Link to="/" className="underline underline-offset-4 text-secondary cursor-pointer hover:text-primary transition-colors duration-200">
         về trang chủ

@@ -79,8 +79,9 @@ export default function Navbar() {
     /* Nav v4 — flat full-width trên canvas (Binance top-nav): hairline dưới,
        không glass/blur, logo block yellow đặc + icon ink. */
     <div className="sticky top-0 z-40 border-b border-line bg-bg">
-      <header className="mx-auto max-w-5xl px-4">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5">
+      {/* Full-bleed Binance-style header: logo sát mép trái, cụm ví sát mép phải */}
+      <header className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5 lg:flex-nowrap">
           <Link to="/" className="flex items-center gap-2 cursor-pointer">
             <span className="grid place-items-center w-9 h-9 rounded-md bg-primary">
               <Landmark className="text-ink" size={20} />

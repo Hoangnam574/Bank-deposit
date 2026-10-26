@@ -140,7 +140,7 @@ export default function Admin() {
 
   if (!hasWallet) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
+      <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 py-16 text-subtle text-center">
         Kết nối ví để xem trang admin (nút{" "}
         <strong className="text-txt">"Kết nối ví"</strong> ở navbar).
       </main>
@@ -150,7 +150,7 @@ export default function Admin() {
     /* Chain allowed nhưng chưa deploy (vd Sepolia khi chưa deploy, hoặc chain lạ
        vượt NetworkGuard) — empty state có action thay câu text lơ lửng. */
     return (
-      <main className="mx-auto max-w-5xl px-4 pb-16">
+      <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
         <NoDeploymentState page="Admin" />
       </main>
     );
@@ -159,7 +159,7 @@ export default function Admin() {
   const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-16">
+    <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
       <section className="mt-6 rounded-2xl border border-line band px-6 py-6 sm:px-9">
         <span className="eyebrow">Vault owner panel</span>
         <h1 className="mt-3 text-3xl font-bold font-display tracking-tight">Admin console</h1>
