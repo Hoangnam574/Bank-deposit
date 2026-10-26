@@ -2,6 +2,7 @@
 
 > Áp dụng cho: 3 Smart Contracts (`MockUSDC`, `VaultManager`, `SavingCore`) + auto-renew bot + frontend React + quy trình build/deploy.
 > Trạng thái: ✅ = đã làm trong code · 🔲 = chưa làm / làm trước khi nộp · ◻️ = ngoài phạm vi homework (note cho production).
+> **Cập nhật 2026-10-26 (v1.1):** phản ánh đúng những gì đã làm — Sepolia deploy + verified 3/3 · gitleaks 2 scan = 0 · ConfirmDialog in-app thay toàn bộ `window.confirm` · fonts `@fontsource` self-host (0 external CDN) · allowlist key Hardhat test chuẩn trong `.gitleaks.toml`.
 
 ---
 
@@ -14,13 +15,13 @@
 | T3 | Admin rút vault đè cam kết → user mất lãi | `withdrawVault` tùy tiện | ✅ C2 solvency: cấm rút khi `bal − amount < totalOwedInterest` (`VM_Insolvent`) |
 | T4 | Admin pause vĩnh viễn, kẹt vốn user | pause độc quyền | ✅ C5: sau 7 ngày pause, user tự `emergencyWithdraw` bypass được `whenSystemRunning` |
 | T5 | Rounding dust được khai thác tích lũy | dust dồn về attacker | ✅ D9 floor multiply-before-divide — dust nằm CÒN TRONG vault (về phía protocol, không về user) |
-| T6 | Kiểm trạng thái để exploit boundary (`<`/`>=`) | rút sớm/đúng/trễ lộn lộn | ✅ D8 + test ở giây biên (`maturityAt−1`, `maturityAt`, `+3d−1`, `+3d`) |
-| T7 | Gọi hàm deposit khi không phải owner | gọi withdraw/renew/topUpsouvenir của người khác | ✅ `onlyDepositOwner(depositId)` (đọc live `ownerOf`), quyền tự động theo NFT — Q1 |
-| T8 | Frontend gắn ABI/address giả để lure approve | phishing domain /攻击 app gắn | ✅ Approve luôn **exact amount** (`frontend/src/pages/OpenDeposit.tsx` — `approve(spender, amount)`, không MaxUint256); ◻️ production: domain chính thức + EIP-712 cho permit |
+| T6 | Kiểm trạng thái để exploit boundary (`<`/`>=`) | rút sớm/đúng/trễ lộn xộn | ✅ D8 + test ở giây biên (`maturityAt−1`, `maturityAt`, `+3d−1`, `+3d`) |
+| T7 | Gọi hàm deposit khi không phải owner | gọi withdraw/renew/topUp của người khác | ✅ `onlyDepositOwner(depositId)` (đọc live `ownerOf`), quyền tự động theo NFT — Q1 |
+| T8 | Frontend gắn ABI/address giả để lure approve | phishing domain / app giả gắn | ✅ Approve luôn **exact amount** (`frontend/src/pages/OpenDeposit.tsx` — `approve(spender, amount)`, không MaxUint256); ◻️ production: domain chính thức + EIP-712 cho permit |
 | T9 | Front-run mempool tx (approve lộ ra trước swap) | kẻ đứng trước trong mempool | ◻️ local/testnet chấp nhận (demo); production: private mempool / Flashblobs Protect hoặc permit EIP-2612 |
-| T10 | Dependency supply chain (npm inject) | package trôi nổi có malware | 🔲 `npm audit` CI + lockfile commit + `npm ci` (không `install` trong build); đã có `package-lock.json` 2 dự án |
-| T11 | XSS chạy script trong app React | inject qua dữ liệu on-chain | ✅ React tự escape; không dùng `dangerouslySetInnerHTML`; ◻️ CSP header `default-src 'self'` |
-| T12 | Rò rỉ secret | private key commit nhầm | ✅ `.env` trong `.gitignore`, không hardcode. Ảnh: `git log -p -- .env` kiểm; 🔲 chạy `gitleaks` scan trước `git push` |
+| T10 | Dependency supply chain (npm inject) | package trôi nổi có malware | ✅ `npm audit` đã chạy cả 2 workspace (production = 0 vuln — §3b); `package-lock.json` commit cả 2 dự án; build dùng `npm run build` với lockfile cố định mọi lần; 🔲 CI pipeline `npm ci` (hiện chưa có CI — là gate thủ công trước mỗi build) |
+| T11 | XSS chạy script trong app React | inject qua dữ liệu on-chain | ✅ React tự escape; không dùng `dangerouslySetInnerHTML`; mọi confirm/alert native đã thay bằng ConfirmDialog in-app; ◻️ CSP header `default-src 'self'` (fonts + tất cả asset đã self-host nên CSP chỉ cần 'self') |
+| T12 | Rò rỉ secret | private key commit nhầm | ✅ `.env` trong `.gitignore`, không hardcode; `git log -p -- .env` sạch; ✅ **gitleaks 8.30.1 chạy `detect` + `--no-git` = 0 leaks** (2026-10-26, §3c) — đang là **pre-commit gate bắt buộc** trước mọi commit; `.gitleaks.toml` cho phép 6 private key Hardhat test (derive từ well-known mnemonic `"test test test junk…"`, đúng chuẩn công khai của Hardhat — không phải secret thật) |
 | T13 | Ví dùng nhầm chain sai (dẫn phí sai, approval sai) | chainId lạ | ✅ `NetworkGuard` chặn + `hasDeployment` kiểm tra addresses.json trước khi render |
 | T14 | App giả mạo dụ user approve cho spender lạ | social engineering | ◻️ ngoài code — video demo chỉ rõ app thật + README cảnh báo; production: permit EIP-2612 kèm deadline |
 
@@ -32,12 +33,12 @@
 |---|---|
 | Reentrancy | `ReentrancyGuard` OZ v5 — `nonReentrant` trên openDeposit/withdrawAtMaturity/earlyWithdraw/partial/topUp/renew/autoRenew/emergencyWithdraw/claimPendingInterest |
 | CEI | status → burn NFT → giảm owed TRƯỚC mọi external call |
-| 1-but-vault-only interest | lãi chỉ chảy qua `VaultManager.payInterest` (chỉ SavingCore được gọi — `onlySavingCore`) |
+| Vault-only interest | lãi chỉ chảy qua `VaultManager.payInterest` (chỉ SavingCore được gọi — `onlySavingCore`) |
 | Solvency | `totalOwedInterest` vs `getVaultBalance` — rút vault bị chặn, increment/decrement owed ánh xạ từng chunk (top-up, partial, C1) |
 | Snapshot immutable | APR + penalty ghi trong `DepositInfo` khi mở → admin đổi plan không ảnh hưởng deposit cũ (test có) |
 | Custom errors | `SC_`/`VM_` prefix, không `require(string)` — tiết kiệm gas, test assert từng error |
 | Checked math | `* before /`, floor D9; bigint units (1e6), không dùng float |
-| Access control | Ownable2-step? — ◻️ (hiện Ownable 1-step; production nên `Ownable2Step` + timelock) |
+| Access control | ◻️ Ownable 1-step hiện tại; production nên `Ownable2Step` + timelock |
 | Pause nguồn duy nhất | `whenSystemRunning` đọc `vault.isPaused()` — không có pause song song trong SC |
 
 **Lệnh kiểm soát (chạy trong repo):**
@@ -56,11 +57,12 @@ npx hardhat compile
 | Approve exact | Không dùng `MaxUint256` — lượng approve luôn đúng số tiền gửi/top-up hiện tại |
 | Bigint chính xác | Preview lãi tính BigInt multiply-before-divide — không lệch so với contract (không dùng `Number.float`) |
 | Guard chain | `NetworkGuard` chỉ cho 31337/11155111; sai chain → banner + switchNetwork, không set contract với address rác |
-| Toast không đổi | `aria-live`, confirm modal cho mọi action nguy hiểm (early withdraw, emergency, top-up) |
+| Toast không đổi | `aria-live`; mọi confirm `window.confirm`/`alert` native đã **thay toàn bộ bằng ConfirmDialog in-app** (`ConfirmProvider` + `useConfirm() → Promise<boolean>`): dialog 2 nút, tone `danger` (rút sớm/emergency) vs `primary`, đóng bằng Hủy/bấm ngoài/`Esc` — giờ đây là modal duy nhất app có |
+| Fonts self-host | Inter + IBM Plex Mono bundle qua `@fontsource` (subset vietnamese) — **0 external CDN** trong dev + build → giảm 1 vector supply-chain (không phụ thuộc Google Fonts CDN, CSP giản lược chỉ cần `default-src 'self'`) |
 | Pause-aware UI | Nút write tự disable khi vault paused; hiện đồng hồ C5 unlock còn bao nhiêu giờ |
 | Bot an toàn | Bot không nắm quyền admin, chỉ gọi public deposit actions; thất bại từng deposit không crash vòng quét |
 
-## 3b. Frontend security assessment — vòng redesign v3 (2026-10-26)
+## 3b. Frontend security assessment — vòng redesign v3 (2026-10-26) + vòng v4 (cùng ngày)
 
 | Khía cạnh | Kết quả | Ghi chú |
 |---|---|---|
@@ -70,6 +72,15 @@ npx hardhat compile
 | Wallet fail-safe | ✅ | Kết nối từ chối / chain lạ → banner lỗi + `NoDeploymentState`, không crash; `buildContracts` trả null an toàn |
 | `npm audit` frontend | ✅ 0 vulnerabilities | full Dependence tree (kèm dev) — 2026-10-26 |
 | `npm audit` template (contracts) | ✅ production = 0 | Full tree còn **20 vuln (15 high / 5 low), 100% dev-toolchain Hardhat/ethers ecosystem**, không ship vào bytecode contract hay bundle frontend. Đã chạy `npm audit fix` non-breaking: nâng `undici` → 7.30.1, `serialize-javascript` → 7.1.4; 164 test vẫn pass sau đó. Số còn lại (zod qua hardhat-zod-utils, elliptic qua @openzeppelin/hardhat-upgrades...) không thể fix non-breaking — chấp nhận có kiểm soát |
+
+**Vòng redesign v4 (cùng ngày 2026-10-26) — thêm facts bảo mật:**
+
+| Khía cạnh | Kết quả | Ghi chú |
+|---|---|---|
+| `window.confirm`/`window.alert` native | ✅ = 0 occurrences trong `frontend/src` | Toàn bộ thay bằng `ConfirmDialog.tsx` (in-app modal, focusable, Esc/click-outside → cancel); phần `dist/` không sinh thêm surface mới |
+| External network requests lúc runtime | ✅ = 0 | ABI + addresses bundle tĩnh; fonts `@fontsource` self-host (không Google Fonts CDN); không analytics/third-party script |
+| `npm audit` sau vòng v4 | ✅ 0 production vuln | Frontend full-tree 0; build pass sau khi thêm fonts + ConfirmDialog |
+| gitleaks sau khi thêm allowlist | ✅ 0 leaks | `.gitleaks.toml` bổ sung allowlist 6 private key Hardhat test-chain (derive từ well-known mnemonic công khai — không phải secret): xuất hiện trong `test/helpers` nhưng không phải credential thật |
 
 ## 3c. Secret scanning report — gitleaks (2026-10-26)
 
@@ -85,9 +96,10 @@ npx hardhat compile
 ### S1 — Trước khi nộp (bắt buộc)
 - [x] ✅ `npm audit --omit=dev` cả 2 dự án — **0 vulnerabilities (production deps)**; `frontend` full-tree 0; template dev-tree 6 low (tooling dev-only — chấp nhận, khuyến nghị `npm audit fix` trên máy dev mới) — 2026-10-24
 - [x] ✅ `gitleaks detect` + `gitleaks detect --no-git` (8.30.1, config `.gitleaks.toml`) — **0 leaks cả hai scan** sau triage; chi tiết §3c — 2026-10-26
+- [x] ✅ Điền địa chỉ Sepolia vào README §2.3 — **xong 2026-10-26** (MockUSDC `0xF203…d67e` · Vault `0x6364…55E9` · Core `0x51Bd…6205`, đã verified Etherscan/Sourcify)
 - [ ] 🔲 Chụp screenshot coverage (`npx hardhat test --coverage`) → `docs/coverage.png` (README §6 dẫn tới)
-- [ ] 🔲 Điền địa chỉ Sepolia vào README §2.3 sau T5.7
-- [ ] 🔲 Tag `v1.0` sau khi video link + Sepolia address sẵn sàng
+- [ ] 🔲 Quay video demo 3–5 phút + upload → link vào README (lộ trình §5 EXECUTION_PLAN — Plan A/B 5 ngày)
+- [ ] 🔲 Tag `v1.0` sau khi video link + coverage.png sẵn sàng (gitleaks chốt cuối trước tag)
 
 ### S2 — Ngay sau nộp (nâng cao giá trị)
 - [ ] 🔲 Fuzz test interest/owed bằng Echidna hoặc Foundry invariant `owed ≤ Σ(principalSeconds×apr)` (nếu thời gian cho phép — không bắt buộc trong homework)
@@ -99,7 +111,7 @@ npx hardhat compile
 - [ ] ◻️ Chainlink Automation thay bot off-chain (keeper on-chain tin cậy hơn cron/script)
 - [ ] ◻️ USDC thật (Ethereum mainnet, decimals 6) — `SavingCore` generic IERC20 nên không cần đổi code
 - [ ] ◻️ Rate-limit faucet + chống mint-spam same-block trên testnet
-- [ ] ◻️ CSP + SRI + domain chính thức cho frontend deploy (Vercel/Netlify), giới hạn `font-src fonts.gstatic.com`
+- [ ] ◻️ CSP + SRI + domain chính thức cho frontend deploy (Vercel/Netlify) — CSP giờ chỉ cần `default-src 'self'` vì mọi asset + font (fontsource) đều self-host, không còn `fonts.gstatic.com` stylesheets/network
 
 ### S4 — Quy trình
 - [ ] ◻️ PR review 2 người cho mỗi pull request vào contracts — hợp đồng không trực tiếp merge lên master
@@ -116,5 +128,8 @@ npx hardhat compile
 | npm audit HIGH/CRITICAL | ✅ = 0 production deps cả 2 workspace; 20 vuln còn lại 100% dev-toolchain (§3b) |
 | Approve MaxUint256 trong frontend | ✅ = 0 |
 | boundary test ở giây biên | ✅ có (D8 suite) |
+| `window.confirm`/`alert` native trong app | ✅ = 0 (ConfirmDialog in-app thay toàn bộ) |
+| External CDN/runtime request | ✅ = 0 (fonts @fontsource self-host, mọi asset tĩnh) |
+| Sepolia contracts verified | ✅ 3/3 (Etherscan + Sourcify, 2026-10-26) |
 
 > Mọi thay đổi bảo mật sau v1.0 phải qua PR có ghi CHANGELOG.Security.
