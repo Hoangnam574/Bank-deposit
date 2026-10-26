@@ -27,7 +27,7 @@ function Tile({
         {icon}
         {label}
       </div>
-      <div className={`mt-1 text-lg font-display ${accent ? "text-primary glow-num" : ""}`}>{value}</div>
+      <div className={`num mt-1 text-lg font-display ${accent ? "text-primary glow-num" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -41,7 +41,7 @@ export default function StatStrip() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 pt-4">
-      <div className="card !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 divide-x divide-line/60">
+      <div className="card !rounded-[1.4rem] !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 divide-x divide-white/5">
         <Tile
           icon={<Coins size={14} />}
           label="USDC khả dụng"

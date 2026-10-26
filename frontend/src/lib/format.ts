@@ -63,7 +63,7 @@ export function fmtCountdown(targetSec: number | bigint, nowSec: number): string
   const h = Math.floor((delta % 86_400) / 3600);
   const m = Math.floor((delta % 3600) / 60);
   const s = delta % 60;
-  if (d > 0) return `${d} ngày ${h}giờ`;
+  if (d > 0) return `${d} ngày ${h} giờ`;
   if (h > 0) return `${h} giờ ${m} phút`;
   return `${m} phút ${s} giây`;
 }

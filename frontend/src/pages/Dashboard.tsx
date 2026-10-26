@@ -1,14 +1,21 @@
 /**
- * Dashboard "/" (T6.7) — hero + 4 PlanCard (variant nổi bật).
- * Số liệu variant: APR 300 bps · tenor 180 ngày · grace 3 ngày · penalty 450 bps.
+ * Dashboard "/" (v3) — hero với eyebrow tag + macro-whitespace, plans dạng
+ * bento bất đối xứng (variant chiếm 2 cột + filler CTA lấp hole — high-end §3B),
+ * skeleton loaders khi fetch. Variant AT190234: APR 300 bps · tenor 180 ngày ·
+ * grace 3 ngày · penalty 450 bps.
  */
 import { Link } from "react-router-dom";
 import { ShieldCheck, AlertTriangle, ArrowRight } from "lucide-react";
 import PlanCard from "@/components/PlanCard";
 import NoDeploymentState from "@/components/NoDeploymentState";
+import { SkeletonGrid } from "@/components/Skeleton";
 import { usePlans } from "@/hooks/usePlans";
 import { useWallet } from "@/providers/WalletProvider";
 import { useContracts } from "@/providers/ContractsProvider";
+import { formatBps } from "@/lib/format";
+
+/** APR bps → % nhãn ngắn */
+const fmtBpsLocal = (bps: bigint) => formatBps(bps);
 
 export default function Dashboard() {
   const { plans, loading, error } = usePlans();
@@ -17,28 +24,30 @@ export default function Dashboard() {
   const variantPlan = plans.find((p) => Number(p.tenorDays) === 180);
 
   if (!contracts) {
-    /* chain chưa deploy — hướng dẫn action thay vì "plan rỗng" sai lệch */
+    /* chain chưa deploy — hướng dẫn action thay vì "plan rỗng" gây hiểu nhầm */
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-16">
+      <main className="mx-auto max-w-5xl px-4 pb-16">
         <NoDeploymentState page="Dashboard" />
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16">
-      {/* ── Hero gradient gold↔violet ─── */}
-      <section className="mt-6 rounded-2xl border border-line hero-gradient px-6 py-8 sm:px-10 sm:py-10">
-        <h1 className="text-3xl sm:text-4xl font-bold font-display tracking-wide">
-          Tiết kiệm có kỳ hạn <span className="text-primary glow-num">USDC</span>
+    <main className="mx-auto max-w-5xl px-4 pb-16">
+      {/* ── Hero: eyebrow + macro-whitespace (high-end §4C) ─── */}
+      <section className="mt-4 rounded-[1.6rem] border border-white/10 hero-gradient px-6 py-12 sm:px-10 sm:py-14">
+        <span className="eyebrow">Vault NFT receipt · compound lãi/second</span>
+        <h1 className="mt-4 text-4xl sm:text-5xl font-bold font-display tracking-tight">
+          Tiết kiệm có kỳ hạn
+          <span className="text-primary glow-num"> USDC</span>
         </h1>
-        <p className="mt-3 text-subtle max-w-2xl">
+        <p className="balance-text mt-4 text-subtle max-w-2xl leading-relaxed">
           Gửi USDC, nhận <strong className="text-txt">chứng nhận NFT</strong>, lãi tính theo giây (APR khóa tại
           thời điểm mở). Rút đúng hạn nhận full lãi; rút sớm bị phạt. Sau grace period{" "}
           <strong className="text-primary">+3 ngày</strong>, bot sẽ{" "}
           <strong className="text-secondary">tự động renew</strong> giữ nguyên APR.
         </p>
-        <div className="mt-4 flex flex-wrap gap-4 text-xs text-subtle">
+        <div className="mt-5 flex flex-wrap gap-4 text-xs text-subtle">
           <span className="inline-flex items-center gap-1">
             <ShieldCheck size={14} className="text-ok" /> NFT là "sổ tiết kiệm" — rút/renew theo chủ NFT
           </span>
@@ -46,9 +55,16 @@ export default function Dashboard() {
             <AlertTriangle size={14} className="text-warn" /> Contract demo · MockUSDC 6 decimals như USDC thật
           </span>
         </div>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link to="/open" className="btn btn-cta inline-flex items-center gap-1 cursor-pointer">
-            Mở tiết kiệm <ArrowRight size={16} />
+        {/* CTA chính — button-in-button trailing icon (high-end §4B) */}
+        <div className="mt-7 flex flex-wrap gap-3">
+          <Link
+            to="/open"
+            className="group btn btn-cta inline-flex items-center gap-2 cursor-pointer px-6"
+          >
+            Mở tiết kiệm
+            <span className="grid place-items-center w-6 h-6 rounded-full bg-black/25 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:scale-105">
+              <ArrowRight size={13} />
+            </span>
           </Link>
           <Link to="/deposits" className="btn btn-outline cursor-pointer">
             Xem sổ tiết kiệm
@@ -57,35 +73,59 @@ export default function Dashboard() {
       </section>
 
       {!address && (
-        <div className="mt-6 card border-secondary/50 text-sm">
-          Kết nối ví ở navbar để xem số dư và mở deposit — hoặc phóng thử qua{" "}
+        <div className="mt-6 card text-sm">
+          Kết nối ví ở navbar để xem số dư và mở deposit — hoặc nhấn{" "}
           <code className="text-primary">Faucet 1k</code> sau khi connect.
         </div>
       )}
 
-      {/* ── Plans (bento) ─── */}
-      <section aria-label="Các kế hoạch tiết kiệm" className="mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl tracking-wider">Kế hoạch</h2>
+      {/* ── Plans: bento bất đối xứng ─── */}
+      <section aria-label="Các kế hoạch tiết kiệm" className="mt-10">
+        <div className="flex items-end justify-between mb-5">
+          <div>
+            <span className="eyebrow">Plans on-chain</span>
+            <h2 className="mt-2 font-display text-2xl tracking-tight">Kế hoạch gửi</h2>
+          </div>
+          {variantPlan && (
+            <span className="num hidden sm:block text-xs text-subtle">
+              Đề xuất: tenor {Number(variantPlan.tenorDays)} ngày · APR {fmtBpsLocal(variantPlan.aprBps)}
+            </span>
+          )}
         </div>
         {error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
-        {loading && <div className="text-subtle text-sm">Đang tải plans… (kiểm tra node localhost:8545)</div>}
+        {loading && <SkeletonGrid count={4} />}
         {!loading && !error && plans.length === 0 && (
-          <div className="card text-sm text-subtle border-dashed border-line">
+          <div className="card text-sm text-subtle border-dashed !border-line">
             Chưa có plan nào — admin cần chạy <code className="text-primary">npm run seed</code>.
           </div>
         )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {plans.map((p) => (
-            <PlanCard
-              key={p.id}
-              plan={p}
-              variant={variantPlan?.id === p.id}
-              onSelect={() => {}}
-            />
-          ))}
-        </div>
+        {!loading && plans.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {plans.map((p) => (
+              <div key={p.id} className={variantPlan?.id === p.id ? "sm:col-span-2" : undefined}>
+                <PlanCard plan={p} variant={variantPlan?.id === p.id} />
+              </div>
+            ))}
+            {/* Filler CTA — lấp hole của bento (high-end §3B) */}
+            <div className="sm:col-span-2 lg:col-span-3">
+              <div className="card card-int h-full flex flex-wrap items-center justify-between gap-3 border-dashed !border-white/10">
+                <p className="text-sm text-subtle">
+                  Chọn plan phía trên hoặc vào trực tiếp form mở tiết kiệm — approve rồi mở trong 2 bước.
+                </p>
+                <Link
+                  to="/open"
+                  className="group btn btn-outline inline-flex items-center gap-2 shrink-0"
+                >
+                  Đến form mở
+                  <span className="grid place-items-center w-6 h-6 rounded-full bg-white/5 transition-transform duration-200 group-hover:translate-x-0.5">
+                    <ArrowRight size={13} />
+                  </span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
-    </div>
+    </main>
   );
 }

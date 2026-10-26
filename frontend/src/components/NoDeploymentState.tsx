@@ -6,7 +6,6 @@
 import { useState } from "react";
 import { AlertTriangle, RefreshCw, KeyRound, ArrowRight } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
-import { useContracts } from "@/providers/ContractsProvider";
 import { HARDHAT_ACCOUNTS } from "@/lib/accounts";
 
 const CHAIN_LABEL: Record<number, string> = {
@@ -16,7 +15,6 @@ const CHAIN_LABEL: Record<number, string> = {
 
 export default function NoDeploymentState({ page }: { page: string }) {
   const { chainId, switchNetwork } = useWallet();
-  const { hasDeployment, contracts } = useContracts();
   const [switching, setSwitching] = useState<number | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
 
@@ -35,10 +33,10 @@ export default function NoDeploymentState({ page }: { page: string }) {
           <h2 className="font-display text-lg">Trang {page} chưa có dữ liệu contract</h2>
           <p className="text-sm text-subtle mt-1">
             Chain đang kết nối:{" "}
-            <strong className="text-txt">{chainId ?? "—"}</strong>
+            <strong className="num text-txt">{chainId ?? "—"}</strong>
             {chainId !== null && CHAIN_LABEL[chainId] ? ` (${CHAIN_LABEL[chainId]})` : ""} — dapp chỉ có
             deployment trên <strong className="text-primary">31337 (local)</strong> và{" "}
-            <strong className="text-primary">11155111 (Sepolia, nếu đã deploy)</strong>. Nhưng contracts: {String(contracts !== null)}{" · "}hasDeployment: {String(hasDeployment)}
+            <strong className="text-primary">11155111 (Sepolia, nếu đã deploy)</strong>.
           </p>
         </div>
       </div>
@@ -76,7 +74,7 @@ export default function NoDeploymentState({ page }: { page: string }) {
         </summary>
         <ol className="mt-2 space-y-2 list-decimal list-inside text-subtle">
           <li>
-            MetaMask → <strong>Import account</strong> (áª_coef Private key) → dán key của account #0 hoặc
+            MetaMask → <strong>Import account</strong> (chọn Private key) → dán key của account #0 hoặc
             #1 bên dưới.
           </li>
           <li>Kiểm tra network của MetaMask phải là <strong>Hardhat Local 31337</strong>.</li>

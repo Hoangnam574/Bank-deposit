@@ -8,7 +8,7 @@
  *   - có pending lãi NỢ (C1 defer) → Claim Pending
  * Mọi action có confirm (window.confirm) + map lỗi thân thiện.
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Loader2, Info } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
@@ -166,32 +166,49 @@ export default function DepositDetail() {
 
   if (notFound) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
+      <main className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
         <Info className="mx-auto inline text-subtle" size={40} aria-hidden />
         <p>Không tìm thấy deposit #{depositId} (NFT có thể đã burn sau khi rút).</p>
         <Link to="/deposits" className="btn btn-outline mt-4 cursor-pointer">
           ← Về sổ tiết kiệm
         </Link>
-      </div>
+      </main>
     );
   }
   if (!contracts) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pb-10">
+      <main className="mx-auto max-w-5xl px-4 pb-10">
         <NoDeploymentState page="Chi tiết deposit" />
-      </div>
+      </main>
     );
   }
   if (!d || !pv) {
+    /* Loading — skeleton khớp shape trang (không spinner/text treo) */
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-subtle">
-        Đang tải deposit #{depositId}… (cần node localhost chạy + deploy)
-      </div>
+      <main className="mx-auto max-w-3xl px-4 pb-20" aria-busy="true">
+        <div className="skeleton mt-8 h-8 w-28" aria-hidden />
+        <div className="skeleton mt-4 h-28 w-full !rounded-2xl" aria-hidden />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6" aria-hidden>
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="skeleton h-20 !rounded-lg" />
+          ))}
+        </div>
+        <div className="skeleton mt-6 h-48 w-full !rounded-2xl" aria-hidden />
+        <span className="sr-only">Đang tải deposit #{depositId}</span>
+      </main>
     );
   }
 
+  const tenurePct = Math.max(
+    0,
+    Math.min(
+      100,
+      ((nowSec - Number(d.startAt)) / Math.max(1, Number(d.maturityAt) - Number(d.startAt))) * 100,
+    ),
+  );
+
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-20">
+    <main className="mx-auto max-w-3xl px-4 pb-20">
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -200,13 +217,14 @@ export default function DepositDetail() {
         <ArrowLeft size={14} /> Trở về
       </button>
 
-      <section className="mt-4 rounded-2xl border border-line hero-gradient px-6 py-5">
-        <h1 className="text-2xl sm:text-3xl font-bold font-display flex items-center gap-3">
+      <section className="mt-4 rounded-2xl border border-white/10 hero-gradient px-6 py-6">
+        <span className="eyebrow">Chi tiết deposit</span>
+        <h1 className="mt-3 text-2xl sm:text-3xl font-bold font-display flex items-center gap-3">
           Deposit #{depositId} <StatusBadge status={d.status} />
         </h1>
         <p className="text-sm text-subtle mt-1">
-          Lãi tính theo giây · APR snapshot <strong className="text-primary">{formatBps(d.aprBpsAtOpen)}</strong> ·
-          penalty <strong className="text-warn">{formatBps(d.penaltyBpsAtOpen)}</strong> (khóa lúc mở — admin đổi plan không ảnh hưởng)
+          Lãi tính theo giây · APR snapshot <strong className="num text-primary">{formatBps(d.aprBpsAtOpen)}</strong> ·
+          penalty <strong className="num text-warn">{formatBps(d.penaltyBpsAtOpen)}</strong> (khóa tại thời điểm mở — admin đổi plan không ảnh hưởng)
         </p>
       </section>
 
@@ -219,38 +237,25 @@ export default function DepositDetail() {
       {/* ── Thông tin số liệu ─── */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
         <InfoBox label="Principal" value={<>{fmtToken(d.principal)} <span className="text-subtle">USDC</span></>} />
-        <InfoBox label="APR khi mở (snapshot)" value={<span className="text-primary font-display">{formatBps(d.aprBpsAtOpen)}</span>} />
-        <InfoBox label="Kỳ hạn" value={`${Number(d.tenorDays)} ngày`} />
+        <InfoBox label="APR khi mở (snapshot)" value={<span className="num text-primary font-display">{formatBps(d.aprBpsAtOpen)}</span>} />
+        <InfoBox label="Kỳ hạn" value={<span className="num">{`${Number(d.tenorDays)} ngày`}</span>} />
         <InfoBox
           label="Đáo hạn"
-          value={nowSec > 0 ? <Countdown targetSec={d.maturityAt} nowSec={nowSec} /> : fmtDate(d.maturityAt)}
+          value={nowSec > 0 ? <Countdown targetSec={d.maturityAt} nowSec={nowSec} /> : <span className="num">{fmtDate(d.maturityAt)}</span>}
         />
-        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"} value={<span className="text-ok font-display glow-num">+{fmtToken(pv.interest, 4)}</span>} />
-        <InfoBox label="Phạt nếu rút sớm" value={<span className="text-warn">−{fmtToken(pv.penalty, 2)}</span>} />
+        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"} value={<span className="num text-ok font-display glow-num">+{fmtToken(pv.interest, 4)}</span>} />
+        <InfoBox label="Phạt nếu rút sớm" value={<span className="num text-warn">−{fmtToken(pv.penalty, 2)}</span>} />
       </div>
 
-      {/* Progress kỳ hạn (startAt → maturityAt) */}
+      {/* Progress kỳ hạn (startAt → maturityAt) — scaleX GPU-safe */}
       {Number(d.status) === ACTIVE && Number(d.maturityAt) > 0 && (
         <div className="card mt-3 !py-3" aria-hidden>
           <div className="flex justify-between text-xs text-subtle mb-1.5">
             <span>{fmtDate(d.startAt)}</span>
             <span>{fmtDate(d.maturityAt)}</span>
           </div>
-          <div className="h-2 rounded-full bg-line/70 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-500"
-              style={{
-                width: `${Math.max(
-                  0,
-                  Math.min(
-                    100,
-                    ((nowSec - Number(d.startAt)) /
-                      Math.max(1, Number(d.maturityAt) - Number(d.startAt))) *
-                      100,
-                  ),
-                ).toFixed(1)}%`,
-              }}
-            />
+          <div className="progress-track">
+            <div className="progress-fill" style={{ "--p": (tenurePct / 100).toFixed(3) } as CSSProperties} />
           </div>
         </div>
       )}
@@ -314,7 +319,7 @@ export default function DepositDetail() {
               <label htmlFor="op-amount">Số lượng (cho Rút một phần / Top-up)</label>
               <input
                 id="op-amount"
-                className="field"
+                className="field num"
                 inputMode="decimal"
                 placeholder="VD: 1000"
                 value={inputAmount}
@@ -483,15 +488,15 @@ export default function DepositDetail() {
           <li>Status: {Number(d.status)} · isOwner: {String(isOwner)}</li>
         </ul>
       </details>
-    </div>
+    </main>
   );
 }
 
 function InfoBox({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="card !rounded-lg !p-3">
+    <div className="card !rounded-xl !p-3">
       <div className="text-xs text-subtle">{label}</div>
-      <div className="text-lg mt-1">{value}</div>
+      <div className="num text-lg mt-1">{value}</div>
     </div>
   );
 }

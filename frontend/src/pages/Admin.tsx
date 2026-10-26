@@ -140,25 +140,30 @@ export default function Admin() {
 
   if (!hasWallet) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
+      <main className="mx-auto max-w-5xl px-4 py-16 text-subtle text-center">
         Kết nối ví để xem trang admin (nút{" "}
         <strong className="text-txt">"Kết nối ví"</strong> ở navbar).
-      </div>
+      </main>
     );
   }
   if (!contracts) {
     /* Chain allowed nhưng chưa deploy (vd Sepolia khi chưa deploy, hoặc chain lạ
        vượt NetworkGuard) — empty state có action thay câu text lơ lửng. */
-    return <NoDeploymentState page="Admin" />;
+    return (
+      <main className="mx-auto max-w-5xl px-4 pb-16">
+        <NoDeploymentState page="Admin" />
+      </main>
+    );
   }
 
   const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16">
-      <section className="mt-6 rounded-2xl border border-line hero-gradient px-6 py-6 sm:px-9">
-        <h1 className="text-3xl font-bold font-display tracking-wide">Admin console</h1>
-        <p className="text-subtle text-sm mt-1">
+    <main className="mx-auto max-w-5xl px-4 pb-16">
+      <section className="mt-6 rounded-2xl border border-white/10 hero-gradient px-6 py-6 sm:px-9">
+        <span className="eyebrow">Vault owner panel</span>
+        <h1 className="mt-3 text-3xl font-bold font-display tracking-tight">Admin console</h1>
+        <p className="num text-subtle text-sm mt-1">
           Vault owner: <code>{owner ?? "—"}</code>{" "}
           {isOwner ? (
             <span className="text-ok">(bạn là owner)</span>
@@ -178,25 +183,25 @@ export default function Admin() {
 
       {owner && (
         <>
-          {/* ── Vault status: 3 tile lớn ─── */}
+          {/* ── Vault status: 3 tile ─── */}
           <section aria-label="Trạng thái vault" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
-            <div className="card !p-4">
+            <div className="stat-tile !rounded-2xl !p-4">
               <div className="text-xs text-subtle">Vault balance (thực)</div>
-              <div className="mt-1 text-2xl font-display">
+              <div className="num mt-1 text-2xl font-display">
                 {vaultBal !== null ? fmtToken(vaultBal) : "…"}{" "}
                 <span className="text-sm text-subtle font-body">USDC</span>
               </div>
             </div>
-            <div className="card !p-4">
+            <div className="stat-tile !rounded-2xl !p-4">
               <div className="text-xs text-subtle">Owed interest (cam kết trả)</div>
-              <div className="mt-1 text-2xl font-display text-warn">
+              <div className="num mt-1 text-2xl font-display text-warn">
                 {owed !== null ? fmtToken(owed) : "…"}{" "}
                 <span className="text-sm text-subtle font-body">USDC</span>
               </div>
             </div>
-            <div className="card !p-4 border-ok/30">
+            <div className="stat-tile !rounded-2xl !p-4 !border-ok/30">
               <div className="text-xs text-subtle">Available (admin rút được)</div>
-              <div className="mt-1 text-2xl font-display text-ok glow-num">
+              <div className="num mt-1 text-2xl font-display text-ok glow-num">
                 {available !== null ? fmtToken(available) : "…"}
               </div>
             </div>
@@ -220,12 +225,15 @@ export default function Admin() {
 
           {/* ── Plans ─── */}
           <section className="mt-8">
-            <h2 className="font-display tracking-wider text-xl mb-3">Plans</h2>
+            <span className="eyebrow">Plan management</span>
+            <h2 className="mt-2 font-display text-xl tracking-tight mb-3">Plans</h2>
             <div className="grid gap-3">
               {plans.map((p) => (
-                <div key={p.id} className="card !p-4 flex flex-wrap items-center gap-3">
-                  <span className="text-subtle text-sm">#{p.id}</span>
-                  <span className="font-display text-lg">{Number(p.tenorDays)}d</span>
+                <div key={p.id} className="num card !p-4 flex flex-wrap items-center gap-3">
+                  <span className="eyebrow">#{p.id}</span>
+                  <span className="font-display text-lg">
+                    {Number(p.tenorDays)} <span className="text-subtle text-sm">ngày</span>
+                  </span>
                   <span className="text-primary">{formatBps(p.aprBps)}</span>
                   <span className="text-subtle text-sm">
                     min {p.minDeposit === 0n ? "—" : fmtToken(p.minDeposit)} · max{" "}
@@ -329,7 +337,7 @@ export default function Admin() {
           {state.message}
         </p>
       )}
-    </div>
+    </main>
   );
 }
 

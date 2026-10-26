@@ -189,7 +189,7 @@ Script quay (giữ nguyên theo Phụ lục D):
 - **Lãi floor (D9)** — phần lẻ < 1 unit ở lại vault; frontend preview tính bằng bigint nên khớp chính xác với contract.
 - **Admin là EOA đơn** — không timelock/multisig (ngoài phạm vi homework).
 - **E2E frontend manual với MetaMask** — chưa có Playwright E2E tự động.
-- **`npm audit`** — production deps 0 vulnerabilities (checked 2026-10-24); dev deps của template có 6 low (tooling, không vào bundle).
+- **`npm audit` / gitleaks** — production deps 0 vulnerabilities ở cả 2 workspace; dev-toolchain của template còn 20 (15 high / 5 low — Hardhat/ethers ecosystem, không vào bundle hay bytecode, chi tiết `SECURITY_PLAN.md` §3b). `gitleaks detect` + `--no-git` = 0 leaks (§3c, checked 2026-10-26).
 - **Repo nằm trong OneDrive (R1)** — nếu compile bị file-lock, move repo ra `C:\dev\` (T0.7).
 
 ---

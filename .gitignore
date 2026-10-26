@@ -25,3 +25,9 @@ desktop.ini
 *.swp
 .idea/
 .vscode/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+
+# Agent skills library (bên thứ ba — reproducible từ skills-lock.json)
+.agents/
+.agent/

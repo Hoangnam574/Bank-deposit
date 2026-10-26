@@ -5,7 +5,7 @@
 > **Nguồn:** `implementation_plan.md`, `extracted_assignment.txt`, `.agent/skills/architecture-designer`, `.agent/skills/ui-ux-pro-max`
 > **Biến thể cá nhân:** A = 4 (cuối MSSV), B = 3 (kề cuối) → grace **3 ngày**, APR **300 bps**, penalty **450 bps**, tenor **180 ngày**
 >
-> **📊 Tiến độ:** ✅ **P0–P3** · ✅ **P4** (164 test, coverage 96.52%) · ✅ **P5** (gate local pass) · ✅ **P6** (build clean; E2E manual chờ demo) · ✅ **P7** (README + Security Plan; video/Sepolia/tag chờ user) · cập nhật 2026-10-24
+> **📊 Tiến độ:** ✅ **P0–P3** · ✅ **P4** (164 test, coverage 96.52%) · ✅ **P5** (gate local pass) · ✅ **P6** (build clean + redesign v3 Playwright-verified + security pass gitleaks/audit; E2E manual chờ demo) · ✅ **P7** (README + Security Plan; video/Sepolia/tag chờ user) · cập nhật 2026-10-26
 
 ---
 
@@ -726,7 +726,7 @@ docs(readme): add design answers and variant table
 | P3 Bonus C1–C5 | ✅ | 2026-10-23 | C1 defer+claim, C3 partial, C4 top-up, C5 emergency + views isMatured/getUserDepositIds; 156/156 test; coverage 96.88% |
 | P4 Tests + coverage | ✅ | 2026-10-23 | 164 test (MockUSDC 5 · VM 30 · SC base 86 · bonus 35 · Security 8); coverage 96.52% lines; MaliciousDepositor 0 lượt attack thành công |
 | P5 Deploy + bot | ✅ (T5.7/T5.8 Sepolia chờ user có key) | 2026-10-23 | Ignition module BankDeposit.ts + seed/bot/interact/timeTravel/withdraw/exportFrontend; gate P5 chạy 1 mạch trên localhost (deploy → seed → open → timeTravel → bot renew #1/#4 → withdraw lãi ghép 5,000→5,073.97→5,149.04); seed idempotent |
-| P6 Frontend | ✅ (T6.16 E2E full-flow chờ demo manual với MetaMask) | 2026-10-24 | Vite+React-TS+Tailwind v4 (`@theme` tokens, Orbitron/Exo 2); Wallet/Contracts/Toast providers; NetworkGuard + Faucet; 5 pages (Dashboard/Open/Deposits/Detail/Admin); `npm run build` TS-clean; dev server serve OK với deploy+seed local · **UI redesign v2** (theo quiz user + skill ui-ux-pro-max): 3 lớp surface OLED, StatStrip 4 tile dưới nav, chain pill + vai trò admin, hero gradient gold↔violet, progress bar kỳ hạn, NoDeploymentState có action (fix dead-end chain), sticky summary /open, glow số tiền |
+| P6 Frontend | ✅ (T6.16 E2E full-flow chờ demo manual với MetaMask) | 2026-10-26 | Vite+React-TS+Tailwind v4 (`@theme` tokens, Orbitron/Exo 2); Wallet/Contracts/Toast providers; NetworkGuard + Faucet; 5 pages (Dashboard/Open/Deposits/Detail/Admin); `npm run build` TS-clean; dev server serve OK với deploy+seed local · **UI redesign v3** (5 skill frontend — ui-ux-pro-max/redesign/high-end/design-taste/web-design-guidelines + quality pass vercel-react-*): tokens & component layer `.card/.eyebrow/.num/.btn*/.progress-*` scaleX GPU, skeleton loaders toàn route, sticky nav island blur, bento bất đối xứng + filler CTA, segmented filter `aria-pressed`, a11y sr-only/aria-busy · **Playwright-verified**: console 0 errors, 0 overflow 375/768/1024/1440, keyboard focus, skeleton shape match · **Fix bug P0** ContractsProvider key mismatch addresses.json (crash trắng trang khi có ví) · security pass: grep sinks 0, npm audit prod 0, gitleaks 0 leaks (SECURITY_PLAN §3b/§3c) |
 | P7 Docs + video | ⬜ | | |
 
 ---

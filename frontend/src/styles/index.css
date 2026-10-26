@@ -1,6 +1,8 @@
 /*
- * Design tokens + base styles (T6.2, zgodne checklist ui-ux-pro-max)
+ * Design tokens + base styles (v3 — audit 5 skill frontend)
  * Fonts: Orbitron (heading) + Exo 2 (body) — link ở index.html
+ * Nguyên tắc v3: hairline viền trắng 8% (không viền xám), bóng tinted,
+ * motion cubic-bezier(.32,.72,0,1), chỉ animate transform/opacity.
  */
 @import "tailwindcss";
 
@@ -26,9 +28,16 @@
   /* Fonts */
   --font-display: "Orbitron", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Exo 2", ui-sans-serif, system-ui, sans-serif;
+
+  /* Motion curve chuẩn v3 (high-end: mô phỏng khối lượng vật lý) */
+  --ease-premium: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark; /* scrollbar + form control native khớp theme OLED */
+  }
   body {
     margin: 0;
     background-color: var(--color-bg);
@@ -36,54 +45,108 @@
     font-family: var(--font-body);
     min-height: 100dvh;
   }
+  /* Touch feedback nhanh: tắt double-tap zoom delay (web-interface-guidelines) */
+  a,
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
   }
+  /* Văn bản dài: tránh từ mồ côi ở dòng cuối (redesign audit) */
+  h1,
+  h2,
+  .balance-text {
+    text-wrap: balance;
+  }
 }
 
-/* Đồng bộ utility rộng rãi tái sử dụng */
 @layer components {
-  /* Card sits trên panel (3 lớp bg → panel → card) */
+  /* ─── Card v3: hairline white/8 + inner highlight (double-bezel CSS) ─── */
   .card {
     background-color: var(--color-card);
-    border: 1px solid var(--color-line);
-    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 1.25rem;
     padding: 1.25rem;
-    /* tinh chỉnh depth: highlight mép trên, đổ bóng mềm theo Dark OLED */
     box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.04),
-      0 8px 24px -12px rgb(0 0 0 / 0.5);
+      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.25),
+      0 24px 48px -28px rgb(0 0 0 / 0.55);
   }
-  /* Tile nhỏ cho StatStrip */
+  /* Card tương tác: hover đổi tint viền + bóng gold (không translate) */
+  .card-int {
+    cursor: pointer;
+    transition:
+      border-color 260ms var(--ease-premium),
+      box-shadow 260ms var(--ease-premium),
+      transform 200ms var(--ease-premium);
+  }
+  .card-int:hover {
+    border-color: rgb(245 158 11 / 0.4);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.07),
+      0 0 24px -6px rgb(245 158 11 / 0.12),
+      0 24px 48px -28px rgb(0 0 0 / 0.55);
+  }
+  .card-int:active {
+    transform: scale(0.985);
+  }
+  /* Tile nhỏ cho StatStrip — đồng bộ hairline */
   .stat-tile {
     background-color: var(--color-card);
-    border: 1px solid var(--color-line);
-    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.07);
+    border-radius: 0.9rem;
     padding: 0.6rem 0.9rem;
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
   }
-  /* Hero gradient gold↔violet — personality trang (dùng cho Dashboard/Detail headers) */
+  /* Hero gradient gold↔violet — personality trang */
   .hero-gradient {
     background:
       radial-gradient(60% 90% at 15% 15%, rgb(245 158 11 / 0.14), transparent 60%),
       radial-gradient(70% 100% at 85% 20%, rgb(139 92 246 / 0.16), transparent 55%),
       var(--color-card);
   }
-  /* Gold glow cho số liệu (skill KEY EFFECTS: minimal glow) */
+  /* Gold glow cho số liệu (minimal glow) */
   .glow-num {
     text-shadow: 0 0 10px rgb(245 158 11 / 0.35);
   }
+  /* Số/hach đợi — dùng mọi nơi hiển thị số tiền/hash (redesign: tabular figures) */
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+  /* Eyebrow tag — badge micro trước H1/H2 (high-end §4C) */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-subtle);
+    background: rgb(255 255 255 / 0.03);
+  }
+  /* ─── Buttons v3: pill + press physics + premium curve ─── */
   .btn {
     font-weight: 700;
     padding: 0.55rem 1.25rem;
-    border-radius: 0.75rem;
+    border-radius: 999px;
     cursor: pointer;
-    transition-property: color, background-color, border-color, opacity, transform;
-    transition-duration: 200ms;
-    transition-timing-function: ease;
     font-family: var(--font-body);
     border: 1px solid transparent;
+    transition:
+      color 260ms var(--ease-premium),
+      background-color 260ms var(--ease-premium),
+      border-color 260ms var(--ease-premium),
+      opacity 200ms var(--ease-premium),
+      transform 120ms var(--ease-premium);
   }
   .btn:focus-visible {
     outline: 2px solid var(--color-secondary);
@@ -92,6 +155,10 @@
   .btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+  /* Press physics — mọi nút nhấn lún nhẹ (high-end §5B) */
+  .btn:not(:disabled):active {
+    transform: scale(0.98);
   }
   /* CTA violet (mở tiết kiệm/claim) */
   .btn-cta {
@@ -103,39 +170,46 @@
   .btn-cta:hover:not(:disabled) {
     background-color: var(--color-primary);
   }
-  /* Amber outline — hành động phụ (approve/switch network/renew) */
+  /* Amber outline — hành động phụ (approve/switch/renew) */
   .btn-outline {
     background: transparent;
-    border-color: var(--color-primary);
+    border-color: rgb(245 158 11 / 0.55);
     color: var(--color-secondary);
   }
   .btn-outline:hover:not(:disabled) {
     background-color: var(--color-primary);
+    border-color: transparent;
     color: #0f172a;
   }
-  /* Danger — pause/emergency/early warnigns */
+  /* Danger — pause/emergency */
   .btn-danger {
     background: transparent;
-    border-color: var(--color-err);
+    border-color: rgb(248 113 113 / 0.55);
     color: var(--color-err);
   }
   .btn-danger:hover:not(:disabled) {
     background-color: var(--color-err);
+    border-color: transparent;
     color: #0f172a;
   }
-  /* Input chuẩn */
+  /* Input chuẩn — hairline viền */
   .field {
     width: 100%;
     background-color: var(--color-panel);
-    border: 1px solid var(--color-line);
-    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 0.9rem;
     padding: 0.6rem 0.9rem;
     color: var(--color-txt);
     font-family: var(--font-body);
+    transition: border-color 260ms var(--ease-premium);
+  }
+  .field::placeholder {
+    color: rgb(169 182 204 / 0.55);
   }
   .field:focus-visible {
     outline: 2px solid var(--color-cta);
     outline-offset: 1px;
+    border-color: rgb(139 92 246 / 0.5);
   }
   label {
     display: block;
@@ -143,10 +217,56 @@
     color: var(--color-subtle);
     margin-bottom: 0.3rem;
   }
+  /* ─── Progress bar GPU-safe: track full-width, fill = transform scaleX ─── */
+  .progress-track {
+    height: 0.5rem;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.06);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.4);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+    transform-origin: left center;
+    transform: scaleX(var(--p, 0));
+    transition: transform 500ms var(--ease-premium);
+    will-change: transform;
+  }
+  /* ─── Skeleton loaders (spinner → skeleton khớp layout, redesign audit) ─── */
+  .skeleton {
+    border-radius: 0.6rem;
+    background: rgb(255 255 255 / 0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(255 255 255 / 0.07),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: sk-sh 1.6s infinite;
+  }
+  @keyframes sk-sh {
+    to {
+      transform: translateX(100%);
+    }
+  }
 }
 
-/* Tôn trọng lucide "giảm chuyển động" cho người dùng (checklist T6.14) */
+/* Tôn trọng prefers-reduced-motion cho người dùng (giữ từ v2 + mở rộng) */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {

@@ -117,13 +117,28 @@ export default function OpenDeposit() {
     });
   };
 
-  void navigate; // (dùng ở tươnglai chuyển detail sau khi mined ok — optional)
+  void navigate; // (dùng ở "tương lai" chuyển detail sau khi mined ok — optional)
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16">
-      <h1 className="mt-8 text-3xl font-bold">Mở tiết kiệm</h1>
+    <main className="mx-auto max-w-5xl px-4 pb-16">
+      <div className="mt-8">
+        <span className="eyebrow">Mở deposit mới</span>
+        <h1 className="mt-3 text-4xl font-bold font-display tracking-tight">Mở tiết kiệm</h1>
+      </div>
       {error && <div className="card border-err/40 text-err text-sm mt-4">{error}</div>}
-      {loading && <div className="text-subtle text-sm mt-4">Đang tải plans…</div>}
+      {loading && (
+        <div className="mt-6" role="status" aria-label="Đang tải plans">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="card" aria-hidden>
+                <div className="skeleton h-3 w-16" />
+                <div className="skeleton mt-3 h-9 w-20" />
+                <div className="skeleton mt-2 h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-6" aria-label="Danh sách plan">
         {plans.map((p) => (
@@ -140,13 +155,13 @@ export default function OpenDeposit() {
 
       {/* ── Form + sticky summary (2 cột từ lg) ─── */}
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_340px] items-start">
-        <div className="card order-2 lg:order-1">
-          <label htmlFor="amount-input" className="!text-sm !text-txt">
+        <section className="card order-2 lg:order-1" aria-label="Form mở tiết kiệm">
+          <label htmlFor="amount-input" className="!text-sm !font-semibold !text-txt">
             Số tiền muốn gửi (USDC)
           </label>
           <input
             id="amount-input"
-            className="field"
+            className="field num text-lg"
             inputMode="decimal"
             placeholder="VD: 1000"
             value={amountStr}
@@ -154,12 +169,12 @@ export default function OpenDeposit() {
             disabled={!plan || !address}
           />
           {balance !== null && amountStr && gpAmount > 0n && (
-            <p className="text-xs text-subtle mt-1">Số dư hiện tại: {fmtToken(balance)} USDC</p>
+            <p className="num text-xs text-subtle mt-1.5">Số dư hiện tại: {fmtToken(balance)} USDC</p>
           )}
 
           {invalidReason && (
             <p className="text-xs text-warn mt-3" role="alert">
-              {invalidReason}
+              ⚠ {invalidReason}
             </p>
           )}
 
@@ -171,12 +186,12 @@ export default function OpenDeposit() {
               return (
                 <li
                   key={label}
-                  className={`px-3 py-1.5 rounded-lg border cursor-default flex items-center gap-1.5 transition-colors duration-200 ${
+                  className={`rounded-full border px-3 py-1.5 cursor-default flex items-center gap-1.5 transition-colors duration-200 ${
                     done
                       ? "border-ok/50 bg-ok/10 text-ok"
                       : current
                         ? "border-cta/60 bg-cta/10 text-cta"
-                        : "border-line text-subtle"
+                        : "border-white/10 text-subtle"
                   }`}
                 >
                   {done && <CheckCircle2 size={12} />}
@@ -186,10 +201,10 @@ export default function OpenDeposit() {
             })}
           </ol>
 
-          <div className="mt-4 flex flex-wrap gap-3 justify-end">
+          <div className="mt-5 flex flex-wrap gap-3 justify-end">
             {allowanceReady ? (
               <span className="inline-flex items-center gap-1 text-xs text-ok self-center">
-                <CheckCircle2 size={14} /> Đã approve
+                <CheckCircle2 size={14} /> Đã approve (allowance đủ)
               </span>
             ) : (
               <button
@@ -210,16 +225,16 @@ export default function OpenDeposit() {
               {state.status === "pending" ? <Loader2 className="animate-spin" size={16} /> : null} Mở tiết kiệm
             </button>
           </div>
-        </div>
+        </section>
 
         {/* Sticky summary */}
-        <aside className="card order-1 lg:order-2 lg:sticky lg:top-24 border-primary/30">
-          <h2 className="font-display text-sm tracking-wider text-primary">TÓM TẮT KỲ HẠN</h2>
+        <aside className="card order-1 lg:order-2 lg:sticky lg:top-24 !border-primary/40" aria-label="Tóm tắt kỳ hạn">
+          <span className="eyebrow !border-primary/30 !text-primary">Tóm tắt kỳ hạn</span>
           {plan && gpAmount > 0n ? (
-            <dl className="mt-3 space-y-2 text-sm">
+            <dl className="num mt-4 space-y-2.5 text-sm">
               <div className="flex justify-between items-baseline">
                 <dt className="text-subtle">Lãi dự kiến đủ hạn</dt>
-                <dd className="text-ok font-display glow-num">
+                <dd className="text-ok font-display glow-num text-base">
                   +{fmtToken(previewInterestOnAmount(gpAmount, plan.tenorDays, plan.aprBps), 4)}
                 </dd>
               </div>
@@ -230,7 +245,7 @@ export default function OpenDeposit() {
               <div className="flex justify-between">
                 <dt className="text-subtle">APR · Kỳ hạn</dt>
                 <dd>
-                  {formatBps(plan.aprBps)} · {Number(plan.tenorDays)}d
+                  {formatBps(plan.aprBps)} · {Number(plan.tenorDays)} ngày
                 </dd>
               </div>
               <div className="flex justify-between">
@@ -239,17 +254,17 @@ export default function OpenDeposit() {
                   {amount !== null ? fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * 86_400) : "—"}
                 </dd>
               </div>
-              <div className="pt-2 border-t border-line text-xs text-subtle">
-                Lãi tính theo giây — số thực tế khớp contract (floor, D9).
+              <div className="pt-3 border-t border-white/5 text-xs text-subtle leading-relaxed">
+                Lãi tính theo giây — số hiển thị khớp logic contract (floor, D9).
               </div>
             </dl>
           ) : (
-            <p className="mt-3 text-sm text-subtle">
-              Chọn plan + nhập số tiền để xem preview lãi / phạt / ngày đáo hạn.
+            <p className="mt-3 text-sm text-subtle leading-relaxed">
+              Chọn plan ở trên + nhập số tiền để xem preview lãi / phạt / ngày đáo hạn ở đây.
             </p>
           )}
         </aside>
       </div>
-    </div>
+    </main>
   );
 }

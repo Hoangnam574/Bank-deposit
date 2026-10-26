@@ -3,7 +3,7 @@
  *   Wallet (đọc địa chỉ/chain) → Contracts (dist từ ABI + addresses)
  *   + ToastProvider (arí live status tx) + Navbar + NetworkGuard
  */
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Link } from "react-router-dom";
 import { WalletProvider } from "@/providers/WalletProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
 import { ContractsProvider } from "@/providers/ContractsProvider";
@@ -33,7 +33,10 @@ export default function App() {
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <footer className="py-8 text-center text-xs text-subtle border-t border-line">
+            <footer
+              className="py-8 text-center text-xs text-subtle border-t border-white/5"
+              style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+            >
               Bank Deposit DApp · AT190234 · USDC 6 decimals · grace 3 ngày · APR 300 bps · penalty 450 bps
             </footer>
           </HashRouter>
@@ -45,8 +48,12 @@ export default function App() {
 
 function NotFound() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16 text-center text-subtle">
-      Trang không tồn tại — <a href="/" className="underline text-secondary cursor-pointer">về trang chủ</a>.
-    </div>
+    <main className="mx-auto max-w-5xl px-4 py-16 text-center text-subtle">
+      Trang không tồn tại —{" "}
+      <Link to="/" className="underline underline-offset-4 text-secondary cursor-pointer hover:text-primary transition-colors duration-200">
+        về trang chủ
+      </Link>
+      .
+    </main>
   );
 }

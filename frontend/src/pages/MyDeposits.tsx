@@ -4,12 +4,13 @@
  *   getUserDepositIds trong contract). Filter Active/Closed + Countdown.
  * Empty state rõ ràng.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Inbox } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
 import NoDeploymentState from "@/components/NoDeploymentState";
+import { SkeletonRows } from "@/components/Skeleton";
 import { useContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";
 import { fmtToken, formatBps } from "@/lib/format";
@@ -88,20 +89,28 @@ export default function MyDeposits() {
         : true,
   );
 
+  const pct = (d: DepositRow): string => {
+    const p = ((nowSec - Number(d.startAt)) / Math.max(1, Number(d.maturityAt) - Number(d.startAt))) * 100;
+    return Math.max(0, Math.min(100, p)).toFixed(3);
+  };
+
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="mt-8 text-3xl font-bold">Sổ tiết kiệm</h1>
-        <Link to="/open" className="btn btn-cta !py-1.5 inline-flex items-center gap-1 mt-8">
+    <main className="mx-auto max-w-5xl px-4 pb-16">
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6">
+        <div>
+          <span className="eyebrow">NFT receipts</span>
+          <h1 className="mt-3 text-4xl font-bold font-display tracking-tight">Sổ tiết kiệm</h1>
+        </div>
+        <Link to="/open" className="btn btn-cta inline-flex items-center gap-1 self-end">
           Mới <ArrowRight size={15} />
         </Link>
       </div>
 
       {!contracts && <NoDeploymentState page="Sổ tiết kiệm" />}
       {contracts && error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
-      {contracts && loading && <div className="text-subtle text-sm">Đang tải danh sách…</div>}
+      {contracts && loading && <SkeletonRows count={2} />}
       {contracts && !loading && !error && rows.length === 0 && (
-        <div className="card text-center py-12 border-dashed border-line">
+        <div className="card text-center py-12 border-dashed !border-white/10">
           <Inbox className="mx-auto text-subtle" size={42} aria-hidden />
           <p className="mt-3 text-subtle">Bạn chưa có deposit nào</p>
           <Link to="/open" className="btn btn-cta mt-4 inline-block cursor-pointer">
@@ -112,7 +121,8 @@ export default function MyDeposits() {
 
       {contracts && rows.length > 0 && (
         <>
-          <div className="flex gap-2 mb-4 text-sm" role="tablist" aria-label="Lọc deposit">
+          {/* Bộ lọc — segmented buttons aria-pressed (bỏ role=tablist thiếu tabpanel) */}
+          <div className="flex gap-2 mb-4 text-sm" aria-label="Lọc deposit">
             {(
               [
                 ["all", "Tất cả"],
@@ -123,11 +133,12 @@ export default function MyDeposits() {
               <button
                 key={v}
                 type="button"
-                role="tab"
-                aria-selected={filter === v}
+                aria-pressed={filter === v}
                 onClick={() => setFilter(v)}
-                className={`px-3 py-1 rounded-full border cursor-pointer transition-colors duration-200 ${
-                  filter === v ? "border-primary text-primary" : "border-line text-subtle hover:text-txt"
+                className={`rounded-full border px-3 py-1.5 cursor-pointer transition-colors duration-200 ${
+                  filter === v
+                    ? "border-primary/60 bg-primary/10 text-primary font-semibold"
+                    : "border-white/10 text-subtle hover:text-txt hover:border-white/25"
                 }`}
               >
                 {label}
@@ -140,42 +151,26 @@ export default function MyDeposits() {
               <Link
                 key={d.id}
                 to={`/deposit/${d.id}`}
-                className="card cursor-pointer hover:-translate-y-0.5 transition-transform duration-200 focus-visible:outline-secondary"
+                className="card card-int focus-visible:outline focus-visible:outline-2 focus-visible:outline-secondary"
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-subtle text-xs">Deposit #{d.id}</div>
-                    <div className="text-2xl font-display text-txt glow-num">{fmtToken(d.principal)} USDC</div>
-                  </div>
+                  <div className="eyebrow">Deposit #{d.id}</div>
                   <StatusBadge status={d.status} />
                 </div>
-                {/* Progress % thời gian đã gửi (startAt → maturityAt) */}
+                <div className="num mt-2 text-2xl font-display text-txt glow-num">{fmtToken(d.principal)} USDC</div>
+                {/* Progress % thời gian đã gửi — scaleX GPU-safe (không animate width) */}
                 {Number(d.status) === STATUS_ACTIVE && Number(d.maturityAt) > 0 && (
-                  <div className="mt-3" aria-hidden>
-                    <div className="h-1.5 rounded-full bg-line/70 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-[width] duration-500"
-                        style={{
-                          width: `${Math.max(
-                            0,
-                            Math.min(
-                              100,
-                              ((nowSec - Number(d.startAt)) /
-                                Math.max(1, Number(d.maturityAt) - Number(d.startAt))) *
-                                100,
-                            ),
-                          ).toFixed(1)}%`,
-                        }}
-                      />
-                    </div>
+                  <div className="mt-3 progress-track !h-1.5" aria-hidden>
+                    <div
+                      className="progress-fill"
+                      style={{ "--p": pct(d) } as CSSProperties}
+                    />
                   </div>
                 )}
-                {!Number.isNaN(Number(d.maturityAt)) && (
-                  <div className="text-xs mt-2">
-                    <Countdown targetSec={d.maturityAt} nowSec={nowSec} showExact />
-                  </div>
-                )}
-                <div className="mt-2 text-sm flex gap-4 text-subtle">
+                <div className="text-xs mt-2.5">
+                  <Countdown targetSec={d.maturityAt} nowSec={nowSec} showExact />
+                </div>
+                <div className="num mt-2 text-sm flex gap-4 text-subtle">
                   <span className="text-primary">{formatBps(d.aprBpsAtOpen)} APR</span>
                   <span>{Number(d.tenorDays)} ngày</span>
                   <span className="text-warn">Phạt {formatBps(d.penaltyBpsAtOpen)}</span>
@@ -185,6 +180,6 @@ export default function MyDeposits() {
           </div>
         </>
       )}
-    </div>
+    </main>
   );
 }

@@ -76,84 +76,88 @@ export default function Navbar() {
   };
 
   return (
-    <header className="border-b border-line bg-panel/85 sticky top-0 z-40 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 cursor-pointer">
-          <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary/15 border border-primary/40">
-            <Landmark className="text-primary" size={20} />
-          </span>
-          <span className="font-display font-bold tracking-wider text-lg">
-            BANK<span className="text-primary">·</span>DEPOSIT
-          </span>
-        </Link>
-
-        <nav aria-label="Điều hướng chính" className="flex gap-1 flex-wrap">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) =>
-                `relative px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors duration-200 ${
-                  isActive
-                    ? "bg-primary/12 text-primary font-semibold"
-                    : "text-subtle hover:text-txt hover:bg-line/50"
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {item.label}
-                  {isActive && (
-                    <span
-                      aria-hidden
-                      className="absolute left-3 right-3 -bottom-[9px] h-0.5 rounded-full bg-primary"
-                    />
-                  )}
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2.5 flex-wrap justify-end">
-          <ChainPill chainId={chainId} />
-          {isAdmin && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-ok/40 bg-ok/10 px-2.5 py-0.5 text-xs text-ok">
-              <ShieldCheck size={12} /> Admin
+    /* Nav v3 — "floating island" (high-end §5A): sticky pill tách khỏi mép
+       trên, glass blur CHỈ trên phần tử fixed/sticky (performance guardrail). */
+    <div className="sticky top-0 z-40 px-3 pt-3" style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom, 0.25rem))" }}>
+      <header className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-panel/80 shadow-[0_16px_40px_-24px_rgb(0_0_0_/_0.7)] backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+          <Link to="/" className="flex items-center gap-2 cursor-pointer">
+            <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary/15 border border-primary/40 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]">
+              <Landmark className="text-primary" size={20} />
             </span>
-          )}
-          {balance !== null && (
-            <span className="text-sm font-display glow-num text-secondary">{fmtToken(balance, 2)}</span>
-          )}
-          {isTestChain && address && (
-            <button
-              type="button"
-              onClick={faucet}
-              disabled={state.status === "pending"}
-              className="btn btn-outline !py-1.5 !px-3 text-xs inline-flex items-center gap-1"
-            >
-              <Droplet size={14} /> Faucet 1k
-            </button>
-          )}
-          {address ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm" title={demo ? `Hardhat account #${demo.index} — ${demo.role}` : "Account ngoài (có thể không có ETH/USDC local)"}>
-                {address.slice(0, 6)}…{address.slice(-4)}
-                {demo && <span className="text-xs text-subtle"> (#{demo.index})</span>}
+            <span className="font-display font-bold tracking-wider text-lg">
+              BANK<span className="text-primary">·</span>DEPOSIT
+            </span>
+          </Link>
+
+          <nav aria-label="Điều hướng chính" className="flex gap-1 flex-wrap">
+            {NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) =>
+                  `relative px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors duration-200 ${
+                    isActive
+                      ? "bg-primary/15 text-primary font-semibold"
+                      : "text-subtle hover:text-txt hover:bg-white/5"
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {item.label}
+                    {isActive && (
+                      <span
+                        aria-hidden
+                        className="absolute left-3 right-3 -bottom-[7px] h-0.5 rounded-full bg-primary"
+                      />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-2.5 flex-wrap justify-end">
+            <ChainPill chainId={chainId} />
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[11px] font-semibold text-ok">
+                <ShieldCheck size={12} /> Admin
               </span>
-              <button type="button" onClick={disconnect} className="btn btn-outline !py-1.5 !px-3 text-xs">
-                Ngắt
+            )}
+            {balance !== null && (
+              <span className="num text-sm font-display glow-num text-secondary">{fmtToken(balance, 2)}</span>
+            )}
+            {isTestChain && address && (
+              <button
+                type="button"
+                onClick={faucet}
+                disabled={state.status === "pending"}
+                className="btn btn-outline !py-1.5 !px-3 text-xs inline-flex items-center gap-1"
+              >
+                <Droplet size={14} /> Faucet 1k
               </button>
-            </div>
-          ) : (
-            <button type="button" onClick={() => void connect()} disabled={connecting} className="btn btn-cta !py-1.5">
-              {connecting ? "Đang kết nối..." : "Kết nối ví"}
-            </button>
-          )}
+            )}
+            {address ? (
+              <div className="flex items-center gap-2">
+                <span className="num text-sm" title={demo ? `Hardhat account #${demo.index} — ${demo.role}` : "Account ngoài (có thể không có ETH/USDC local)"}>
+                  {address.slice(0, 6)}…{address.slice(-4)}
+                  {demo && <span className="text-xs text-subtle"> (#{demo.index})</span>}
+                </span>
+                <button type="button" onClick={disconnect} className="btn btn-outline !py-1.5 !px-3 text-xs">
+                  Ngắt
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => void connect()} disabled={connecting} className="btn btn-cta !py-1.5">
+                {connecting ? "Đang kết nối" : "Kết nối ví"}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-      {error && <div className="px-4 pb-2 text-xs text-err">{error}</div>}
-    </header>
+        {error && <div className="px-4 pb-2 text-xs text-err">{error}</div>}
+      </header>
+    </div>
   );
 }

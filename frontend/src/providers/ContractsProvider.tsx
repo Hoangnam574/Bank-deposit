@@ -23,9 +23,9 @@ export type AnyContract = EthersContract & {
 };
 
 interface ChainContracts {
-  usdc: string;
-  vault: string;
-  core: string;
+  MockUSDC: string;
+  VaultManager: string;
+  SavingCore: string;
 }
 const CHAINS = addressesConfig as unknown as Record<string, ChainContracts>;
 
@@ -49,12 +49,12 @@ const Ctx = createContext<ContractsCtx | null>(null);
 
 function buildContracts(cfg: ChainContracts, provider: BrowserProvider): Contracts {
   return {
-    usdc: new Contract(cfg.usdc, MockUSDCAbi as unknown as string, provider) as AnyContract,
-    vault: new Contract(cfg.vault, VaultManagerAbi as unknown as string, provider) as AnyContract,
-    core: new Contract(cfg.core, SavingCoreAbi as unknown as string, provider) as AnyContract,
-    usdcAddress: cfg.usdc,
-    vaultAddress: cfg.vault,
-    savingCoreAddress: cfg.core,
+    usdc: new Contract(cfg.MockUSDC, MockUSDCAbi as unknown as string, provider) as AnyContract,
+    vault: new Contract(cfg.VaultManager, VaultManagerAbi as unknown as string, provider) as AnyContract,
+    core: new Contract(cfg.SavingCore, SavingCoreAbi as unknown as string, provider) as AnyContract,
+    usdcAddress: cfg.MockUSDC,
+    vaultAddress: cfg.VaultManager,
+    savingCoreAddress: cfg.SavingCore,
   };
 }
 
