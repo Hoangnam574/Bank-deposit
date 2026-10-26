@@ -35,11 +35,11 @@ export default function Dashboard() {
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16">
       {/* ── Hero: eyebrow + macro-whitespace (high-end §4C) ─── */}
-      <section className="mt-4 rounded-[1.6rem] border border-white/10 hero-gradient px-6 py-12 sm:px-10 sm:py-14">
+      <section className="mt-4 rounded-xl border border-line band px-6 py-12 sm:px-10 sm:py-14">
         <span className="eyebrow">Vault NFT receipt · compound lãi/second</span>
         <h1 className="mt-4 text-4xl sm:text-5xl font-bold font-display tracking-tight">
           Tiết kiệm có kỳ hạn
-          <span className="text-primary glow-num"> USDC</span>
+          <span className="text-primary"> USDC</span>
         </h1>
         <p className="balance-text mt-4 text-subtle max-w-2xl leading-relaxed">
           Gửi USDC, nhận <strong className="text-txt">chứng nhận NFT</strong>, lãi tính theo giây (APR khóa tại
@@ -108,7 +108,7 @@ export default function Dashboard() {
             ))}
             {/* Filler CTA — lấp hole của bento (high-end §3B) */}
             <div className="sm:col-span-2 lg:col-span-3">
-              <div className="card card-int h-full flex flex-wrap items-center justify-between gap-3 border-dashed !border-white/10">
+              <div className="card card-int h-full flex flex-wrap items-center justify-between gap-3 border-dashed !border-line">
                 <p className="text-sm text-subtle">
                   Chọn plan phía trên hoặc vào trực tiếp form mở tiết kiệm — approve rồi mở trong 2 bước.
                 </p>
@@ -117,7 +117,7 @@ export default function Dashboard() {
                   className="group btn btn-outline inline-flex items-center gap-2 shrink-0"
                 >
                   Đến form mở
-                  <span className="grid place-items-center w-6 h-6 rounded-full bg-white/5 transition-transform duration-200 group-hover:translate-x-0.5">
+                  <span className="grid place-items-center w-6 h-6 rounded-full bg-panel transition-transform duration-200 group-hover:translate-x-0.5">
                     <ArrowRight size={13} />
                   </span>
                 </Link>

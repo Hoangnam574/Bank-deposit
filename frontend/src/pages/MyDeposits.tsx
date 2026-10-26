@@ -110,7 +110,7 @@ export default function MyDeposits() {
       {contracts && error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
       {contracts && loading && <SkeletonRows count={2} />}
       {contracts && !loading && !error && rows.length === 0 && (
-        <div className="card text-center py-12 border-dashed !border-white/10">
+        <div className="card text-center py-12 border-dashed !border-line">
           <Inbox className="mx-auto text-subtle" size={42} aria-hidden />
           <p className="mt-3 text-subtle">Bạn chưa có deposit nào</p>
           <Link to="/open" className="btn btn-cta mt-4 inline-block cursor-pointer">
@@ -138,7 +138,7 @@ export default function MyDeposits() {
                 className={`rounded-full border px-3 py-1.5 cursor-pointer transition-colors duration-200 ${
                   filter === v
                     ? "border-primary/60 bg-primary/10 text-primary font-semibold"
-                    : "border-white/10 text-subtle hover:text-txt hover:border-white/25"
+                    : "border-line text-subtle hover:text-txt hover:border-white/25"
                 }`}
               >
                 {label}
@@ -157,7 +157,7 @@ export default function MyDeposits() {
                   <div className="eyebrow">Deposit #{d.id}</div>
                   <StatusBadge status={d.status} />
                 </div>
-                <div className="num mt-2 text-2xl font-display text-txt glow-num">{fmtToken(d.principal)} USDC</div>
+                <div className="num mt-2 text-2xl font-display text-txt">{fmtToken(d.principal)} USDC</div>
                 {/* Progress % thời gian đã gửi — scaleX GPU-safe (không animate width) */}
                 {Number(d.status) === STATUS_ACTIVE && Number(d.maturityAt) > 0 && (
                   <div className="mt-3 progress-track !h-1.5" aria-hidden>

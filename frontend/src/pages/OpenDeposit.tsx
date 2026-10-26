@@ -191,7 +191,7 @@ export default function OpenDeposit() {
                       ? "border-ok/50 bg-ok/10 text-ok"
                       : current
                         ? "border-cta/60 bg-cta/10 text-cta"
-                        : "border-white/10 text-subtle"
+                        : "border-line text-subtle"
                   }`}
                 >
                   {done && <CheckCircle2 size={12} />}
@@ -234,7 +234,7 @@ export default function OpenDeposit() {
             <dl className="num mt-4 space-y-2.5 text-sm">
               <div className="flex justify-between items-baseline">
                 <dt className="text-subtle">Lãi dự kiến đủ hạn</dt>
-                <dd className="text-ok font-display glow-num text-base">
+                <dd className="num text-ok text-base">
                   +{fmtToken(previewInterestOnAmount(gpAmount, plan.tenorDays, plan.aprBps), 4)}
                 </dd>
               </div>
@@ -254,7 +254,7 @@ export default function OpenDeposit() {
                   {amount !== null ? fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * 86_400) : "—"}
                 </dd>
               </div>
-              <div className="pt-3 border-t border-white/5 text-xs text-subtle leading-relaxed">
+              <div className="pt-3 border-t border-line text-xs text-subtle leading-relaxed">
                 Lãi tính theo giây — số hiển thị khớp logic contract (floor, D9).
               </div>
             </dl>

@@ -160,7 +160,7 @@ export default function Admin() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16">
-      <section className="mt-6 rounded-2xl border border-white/10 hero-gradient px-6 py-6 sm:px-9">
+      <section className="mt-6 rounded-2xl border border-line band px-6 py-6 sm:px-9">
         <span className="eyebrow">Vault owner panel</span>
         <h1 className="mt-3 text-3xl font-bold font-display tracking-tight">Admin console</h1>
         <p className="num text-subtle text-sm mt-1">
@@ -201,7 +201,7 @@ export default function Admin() {
             </div>
             <div className="stat-tile !rounded-2xl !p-4 !border-ok/30">
               <div className="text-xs text-subtle">Available (admin rút được)</div>
-              <div className="num mt-1 text-2xl font-display text-ok glow-num">
+              <div className="num mt-1 text-2xl font-display text-ok">
                 {available !== null ? fmtToken(available) : "…"}
               </div>
             </div>

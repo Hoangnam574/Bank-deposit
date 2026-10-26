@@ -1,7 +1,8 @@
 /**
  * PlanCard v3 — thẻ plan dùng ở Dashboard (bento) và OpenDeposit (compact).
- * Hairline viền; hover = tint viền gold + bóng (không translate-y — GPU-safe);
- * press physics scale(0.985); hỗ trợ Enter + Space; số dùng .num (tabular).
+ * PlanCard v3 → v4 — thẻ plan dùng ở Dashboard (bento) và OpenDeposit (compact).
+ * Surface phẳng #1E2329 + hairline; hover = nâng 1 bước surface (elevated);
+ * press physics scale(0.985); hỗ trợ Enter + Space; số dùng .num (mono tabular).
  */
 import { formatBps, fmtToken, previewInterestOnAmount, SCALAR } from "@/lib/format";
 
@@ -51,7 +52,7 @@ export default function PlanCard({ plan, variant = false, onSelect, selected = f
       </div>
 
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="num text-4xl font-display font-bold text-primary glow-num">{formatBps(plan.aprBps)}</span>
+        <span className="num text-4xl font-bold text-primary">{formatBps(plan.aprBps)}</span>
         <span className="text-sm text-subtle">APR</span>
       </div>
       <div className="num mt-1 text-lg">{Number(plan.tenorDays)} ngày kỳ hạn</div>
@@ -72,7 +73,7 @@ export default function PlanCard({ plan, variant = false, onSelect, selected = f
               <dd className="text-warn">{formatBps(plan.earlyWithdrawPenaltyBps)}</dd>
             </div>
           </dl>
-          <div className="mt-4 pt-3 border-t border-white/5 text-xs text-subtle">
+          <div className="mt-4 pt-3 border-t border-line text-xs text-subtle">
             Ví dụ: gửi {fmtToken(sample)} USDC đủ hạn → nhận lãi ~{" "}
             <strong className="num text-txt">{fmtToken(interest, 4)} USDC</strong>
           </div>

@@ -1,42 +1,50 @@
 /*
- * Design tokens + base styles (v3 — audit 5 skill frontend)
- * Fonts: Orbitron (heading) + Exo 2 (body) — link ở index.html
- * Nguyên tắc v3: hairline viền trắng 8% (không viền xám), bóng tinted,
- * motion cubic-bezier(.32,.72,0,1), chỉ animate transform/opacity.
+ * Design tokens + base styles (v4 — Binance design language per DESIGN.md)
+ * Fonts: Inter (BinanceNova substitute) + IBM Plex Mono cho số (.num) — link ở index.html
+ * Nguyên tắc v4: canvas đen sâu #0B0E11, card #1E2329 phẳng (zero gradient/glow/glass),
+ * yellow #FCD535 là accent DUY NHẤT (black-on-yellow CTA), hairline #2B3139,
+ * trading green/red cho hướng tăng/giảm.
  */
 @import "tailwindcss";
 
 @theme {
-  /* Lớp nền — 3 lớp rõ (bg → panel → card) để phân tầng trên OLED dark */
-  --color-bg: #0b1120;
-  --color-panel: #131e33;
-  --color-card: #18243e;
-  --color-line: #2b3b57;
-  --color-subtle: #a9b6cc; /* ≥ 4.5:1 trên bg */
-  --color-txt: #f8fafc;
+  /* Lớp nền Binance dark: canvas → card → elevated (3 stepped surfaces) */
+  --color-bg: #0b0e11;
+  --color-card: #1e2329;
+  --color-panel: #2b3139; /* elevated — input/hover/step surfaces */
+  --color-line: #2b3139; /* hairline-on-dark = elevated step */
+  --color-txt: #eaecef; /* body-on-dark */
+  --color-subtle: #929aa5; /* muted-strong — secondary text ≥ 4.5:1 */
+  --color-muted: #707a8a; /* muted — caption/placeholder/meta */
 
-  /* Accent thương hiệu — Gold trust + Purple tech (skill crypto-fintech) */
-  --color-primary: #f59e0b; /* amber  — APR/badge chính */
-  --color-secondary: #fbbf24; /* amber sáng — hover/highlight */
-  --color-cta: #8b5cf6; /* violet — nút hành động */
+  /* Neutral + semantic (trắng chỉ dành cho headline) */
+  --color-ink: #181a20; /* on-primary text */
+  --color-hairline-light: #eaecef; /* hairline-on-light (footer sáng) */
 
-  --color-ok: #4ade80;
-  --color-err: #f87171;
-  --color-warn: #facc15;
-  --color-muted: #c3cade;
+  /* Accent duy nhất — yellow carries every primary CTA */
+  --color-primary: #fcd535;
+  --color-secondary: #f0b90b; /* primary-active — hover/pressed */
+  --color-cta: #fcd535; /* alias — CTA là yellow */
 
-  /* Fonts */
-  --font-display: "Orbitron", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Exo 2", ui-sans-serif, system-ui, sans-serif;
+  /* Trading signals (DESIGN.md: giá trị định hướng tăng/giảm) */
+  --color-ok: #0ecb81;
+  --color-err: #f6465d;
+  --color-warn: #f0b90b;
+  --color-info: #3b82f6; /* focus ring */
 
-  /* Motion curve chuẩn v3 (high-end: mô phỏng khối lượng vật lý) */
+  /* Fonts — BinanceNova/Plex không public: Inter + IBM Plex Mono thay thế */
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  /* Motion curve (mềm, functional ~200ms) */
   --ease-premium: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
-    color-scheme: dark; /* scrollbar + form control native khớp theme OLED */
+    color-scheme: dark; /* scrollbar + form control native khớp theme dark */
   }
   body {
     margin: 0;
@@ -55,6 +63,7 @@
   h2,
   h3 {
     font-family: var(--font-display);
+    color: #ffffff; /* headline trắng — body giữ #EAECEF */
   }
   /* Văn bản dài: tránh từ mồ côi ở dòng cuối (redesign audit) */
   h1,
@@ -65,151 +74,128 @@
 }
 
 @layer components {
-  /* ─── Card v3: hairline white/8 + inner highlight (double-bezel CSS) ─── */
+  /* ─── Card v4: surface phẳng #1E2329 + hairline #2B3139 (không bóng) ─── */
   .card {
     background-color: var(--color-card);
-    border: 1px solid rgb(255 255 255 / 0.08);
-    border-radius: 1.25rem;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
     padding: 1.25rem;
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.05),
-      inset 0 -1px 0 0 rgb(0 0 0 / 0.25),
-      0 24px 48px -28px rgb(0 0 0 / 0.55);
   }
-  /* Card tương tác: hover đổi tint viền + bóng gold (không translate) */
+  /* Card tương tác: hover nâng 1 bước surface (elevated) + viền sáng hơn */
   .card-int {
     cursor: pointer;
     transition:
-      border-color 260ms var(--ease-premium),
-      box-shadow 260ms var(--ease-premium),
-      transform 200ms var(--ease-premium);
+      border-color 200ms var(--ease-premium),
+      background-color 200ms var(--ease-premium),
+      transform 120ms var(--ease-premium);
   }
   .card-int:hover {
-    border-color: rgb(245 158 11 / 0.4);
-    box-shadow:
-      inset 0 1px 0 0 rgb(255 255 255 / 0.07),
-      0 0 24px -6px rgb(245 158 11 / 0.12),
-      0 24px 48px -28px rgb(0 0 0 / 0.55);
+    border-color: #3f474e;
+    background-color: #23282e;
   }
   .card-int:active {
     transform: scale(0.985);
   }
-  /* Tile nhỏ cho StatStrip — đồng bộ hairline */
+  /* Tile StatStrip — callout trong suốt, số trắng/yellow (stat-callout-on-dark) */
   .stat-tile {
-    background-color: var(--color-card);
-    border: 1px solid rgb(255 255 255 / 0.07);
-    border-radius: 0.9rem;
-    padding: 0.6rem 0.9rem;
-    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.04);
+    padding: 0.35rem 0.9rem;
   }
-  /* Hero gradient gold↔violet — personality trang */
-  .hero-gradient {
-    background:
-      radial-gradient(60% 90% at 15% 15%, rgb(245 158 11 / 0.14), transparent 60%),
-      radial-gradient(70% 100% at 85% 20%, rgb(139 92 246 / 0.16), transparent 55%),
-      var(--color-card);
+  /* Band phẳng thay band (Binance cấm atmospheric gradient) */
+  .band {
+    background: var(--color-card);
   }
-  /* Gold glow cho số liệu (minimal glow) */
-  .glow-num {
-    text-shadow: 0 0 10px rgb(245 158 11 / 0.35);
-  }
-  /* Số/hach đợi — dùng mọi nơi hiển thị số tiền/hash (redesign: tabular figures) */
+  /* Số/hash — IBM Plex Mono tabular (BinancePlex substitute) */
   .num {
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.01em;
+    letter-spacing: 0;
   }
-  /* Eyebrow tag — badge micro trước H1/H2 (high-end §4C) */
+  /* Eyebrow — micro badge phẳng, không pill */
   .eyebrow {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    border: 1px solid rgb(255 255 255 / 0.1);
-    border-radius: 999px;
-    padding: 0.25rem 0.75rem;
-    font-size: 10px;
+    border: 1px solid var(--color-line);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--color-subtle);
-    background: rgb(255 255 255 / 0.03);
+    color: var(--color-muted);
   }
-  /* ─── Buttons v3: pill + press physics + premium curve ─── */
+  /* ─── Buttons v4: radius 6px, height 40px, font 14/600 (functional Binance) ─── */
   .btn {
-    font-weight: 700;
-    padding: 0.55rem 1.25rem;
-    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.375rem;
     cursor: pointer;
     font-family: var(--font-body);
     border: 1px solid transparent;
     transition:
-      color 260ms var(--ease-premium),
-      background-color 260ms var(--ease-premium),
-      border-color 260ms var(--ease-premium),
+      color 200ms var(--ease-premium),
+      background-color 200ms var(--ease-premium),
+      border-color 200ms var(--ease-premium),
       opacity 200ms var(--ease-premium),
       transform 120ms var(--ease-premium);
   }
   .btn:focus-visible {
-    outline: 2px solid var(--color-secondary);
+    outline: 2px solid var(--color-info);
     outline-offset: 2px;
   }
   .btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
   }
-  /* Press physics — mọi nút nhấn lún nhẹ (high-end §5B) */
   .btn:not(:disabled):active {
     transform: scale(0.98);
   }
-  /* CTA violet (mở tiết kiệm/claim) */
+  /* Yellow primary — black-on-yellow (BinanceCTA): mọi nút hành động chính */
   .btn-cta {
-    background-color: var(--color-cta);
-    color: #fff;
-    font-family: var(--font-display);
-    letter-spacing: 0.05em;
+    background-color: var(--color-primary);
+    color: var(--color-ink);
   }
   .btn-cta:hover:not(:disabled) {
-    background-color: var(--color-primary);
+    background-color: var(--color-secondary);
   }
-  /* Amber outline — hành động phụ (approve/switch/renew) */
+  /* Surface outline — secondary-on-dark (approve/switch/faucet) */
   .btn-outline {
-    background: transparent;
-    border-color: rgb(245 158 11 / 0.55);
-    color: var(--color-secondary);
+    background-color: var(--color-card);
+    border-color: var(--color-line);
+    color: #ffffff;
   }
   .btn-outline:hover:not(:disabled) {
-    background-color: var(--color-primary);
-    border-color: transparent;
-    color: #0f172a;
+    background-color: var(--color-panel);
+    border-color: #3f474e;
   }
-  /* Danger — pause/emergency */
+  /* Danger — trading-down red (pause/emergency): fill red khi hover */
   .btn-danger {
     background: transparent;
-    border-color: rgb(248 113 113 / 0.55);
+    border-color: rgb(246 70 93 / 0.55);
     color: var(--color-err);
   }
   .btn-danger:hover:not(:disabled) {
     background-color: var(--color-err);
     border-color: transparent;
-    color: #0f172a;
+    color: #ffffff;
   }
-  /* Input chuẩn — hairline viền */
+  /* Input chuẩn — filled step #2B3139 trên card (search-input-on-dark) */
   .field {
     width: 100%;
     background-color: var(--color-panel);
-    border: 1px solid rgb(255 255 255 / 0.08);
-    border-radius: 0.9rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
     padding: 0.6rem 0.9rem;
     color: var(--color-txt);
     font-family: var(--font-body);
-    transition: border-color 260ms var(--ease-premium);
+    transition: background-color 200ms var(--ease-premium);
   }
   .field::placeholder {
-    color: rgb(169 182 204 / 0.55);
+    color: var(--color-muted);
   }
   .field:focus-visible {
-    outline: 2px solid var(--color-cta);
+    outline: 2px solid var(--color-info);
     outline-offset: 1px;
-    border-color: rgb(139 92 246 / 0.5);
   }
   label {
     display: block;
@@ -217,28 +203,27 @@
     color: var(--color-subtle);
     margin-bottom: 0.3rem;
   }
-  /* ─── Progress bar GPU-safe: track full-width, fill = transform scaleX ─── */
+  /* ─── Progress bar GPU-safe: track elevated, fill yellow phẳng ─── */
   .progress-track {
     height: 0.5rem;
-    border-radius: 999px;
-    background: rgb(255 255 255 / 0.06);
-    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.4);
+    border-radius: 0.25rem;
+    background: var(--color-panel);
     overflow: hidden;
   }
   .progress-fill {
     height: 100%;
     width: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+    border-radius: 0.25rem;
+    background: var(--color-primary);
     transform-origin: left center;
     transform: scaleX(var(--p, 0));
     transition: transform 500ms var(--ease-premium);
     will-change: transform;
   }
-  /* ─── Skeleton loaders (spinner → skeleton khớp layout, redesign audit) ─── */
+  /* ─── Skeleton loaders: shimmer trắng mảnh trên step surface ─── */
   .skeleton {
-    border-radius: 0.6rem;
-    background: rgb(255 255 255 / 0.05);
+    border-radius: 0.5rem;
+    background: rgb(255 255 255 / 0.04);
     position: relative;
     overflow: hidden;
   }
@@ -249,7 +234,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgb(255 255 255 / 0.07),
+      rgb(255 255 255 / 0.06),
       transparent
     );
     transform: translateX(-100%);
@@ -259,6 +244,13 @@
     to {
       transform: translateX(100%);
     }
+  }
+}
+
+/* Số lên tiếng: mono voice thắng cả utility font-display (cascade layer order) */
+@layer utilities {
+  .num {
+    font-family: var(--font-mono);
   }
 }
 

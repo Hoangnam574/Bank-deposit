@@ -217,7 +217,7 @@ export default function DepositDetail() {
         <ArrowLeft size={14} /> Trở về
       </button>
 
-      <section className="mt-4 rounded-2xl border border-white/10 hero-gradient px-6 py-6">
+      <section className="mt-4 rounded-2xl border border-line band px-6 py-6">
         <span className="eyebrow">Chi tiết deposit</span>
         <h1 className="mt-3 text-2xl sm:text-3xl font-bold font-display flex items-center gap-3">
           Deposit #{depositId} <StatusBadge status={d.status} />
@@ -237,13 +237,13 @@ export default function DepositDetail() {
       {/* ── Thông tin số liệu ─── */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
         <InfoBox label="Principal" value={<>{fmtToken(d.principal)} <span className="text-subtle">USDC</span></>} />
-        <InfoBox label="APR khi mở (snapshot)" value={<span className="num text-primary font-display">{formatBps(d.aprBpsAtOpen)}</span>} />
+        <InfoBox label="APR khi mở (snapshot)" value={<span className="num text-primary">{formatBps(d.aprBpsAtOpen)}</span>} />
         <InfoBox label="Kỳ hạn" value={<span className="num">{`${Number(d.tenorDays)} ngày`}</span>} />
         <InfoBox
           label="Đáo hạn"
           value={nowSec > 0 ? <Countdown targetSec={d.maturityAt} nowSec={nowSec} /> : <span className="num">{fmtDate(d.maturityAt)}</span>}
         />
-        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"} value={<span className="num text-ok font-display glow-num">+{fmtToken(pv.interest, 4)}</span>} />
+        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"} value={<span className="num text-ok">+{fmtToken(pv.interest, 4)}</span>} />
         <InfoBox label="Phạt nếu rút sớm" value={<span className="num text-warn">−{fmtToken(pv.penalty, 2)}</span>} />
       </div>
 

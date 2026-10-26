@@ -33,11 +33,19 @@ export default function App() {
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            {/* Footer-light (Binance signature: transactional surface flip)
+                — cùng yellow language nhưng canvas trắng #FAFAFA/ink */}
             <footer
-              className="py-8 text-center text-xs text-subtle border-t border-white/5"
-              style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))" }}
+              className="py-10 text-center text-xs text-ink/70"
+              style={{
+                backgroundColor: "#fafafa",
+                paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))",
+              }}
             >
-              Bank Deposit DApp · AT190234 · USDC 6 decimals · grace 3 ngày · APR 300 bps · penalty 450 bps
+              <p className="text-ink font-semibold">Bank Deposit DApp</p>
+              <p className="mt-1">
+                AT190234 · USDC 6 decimals · grace 3 ngày · APR 300 bps · penalty 450 bps
+              </p>
             </footer>
           </HashRouter>
         </ContractsProvider>

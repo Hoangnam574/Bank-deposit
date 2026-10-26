@@ -31,3 +31,6 @@ desktop.ini
 # Agent skills library (bên thứ ba — reproducible từ skills-lock.json)
 .agents/
 .agent/
+skills/
+.claude/skills/
+.codex/skills/

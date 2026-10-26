@@ -1,7 +1,6 @@
 /**
- * StatStrip — 4 tile context dưới nav trên mọi trang:
- *   USDC balance · Deposits Active · Tổng principal · Vault available (admin only)
- * Số tiền dùng font-display + gold glow (skill: "gold trust + minimal glow").
+ * StatStrip — 4 stat-callout trên mọi trang (v4 Binance: trong suốt trong card,
+ * label muted 12px, số mono trắng / yellow accent cho vault available).
  */
 import { type ReactNode } from "react";
 import { Coins, Wallet, PiggyBank, Vault, RefreshCw, Loader2 } from "lucide-react";
@@ -27,7 +26,7 @@ function Tile({
         {icon}
         {label}
       </div>
-      <div className={`num mt-1 text-lg font-display ${accent ? "text-primary glow-num" : ""}`}>{value}</div>
+      <div className={`num mt-1 text-lg font-display ${accent ? "text-primary" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -41,7 +40,7 @@ export default function StatStrip() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 pt-4">
-      <div className="card !rounded-[1.4rem] !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 divide-x divide-white/5">
+      <div className="card !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 divide-x divide-line">
         <Tile
           icon={<Coins size={14} />}
           label="USDC khả dụng"

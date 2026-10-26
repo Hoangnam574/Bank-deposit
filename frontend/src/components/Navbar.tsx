@@ -76,16 +76,16 @@ export default function Navbar() {
   };
 
   return (
-    /* Nav v3 — "floating island" (high-end §5A): sticky pill tách khỏi mép
-       trên, glass blur CHỈ trên phần tử fixed/sticky (performance guardrail). */
-    <div className="sticky top-0 z-40 px-3 pt-3" style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom, 0.25rem))" }}>
-      <header className="mx-auto max-w-5xl rounded-2xl border border-white/10 bg-panel/80 shadow-[0_16px_40px_-24px_rgb(0_0_0_/_0.7)] backdrop-blur-md">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+    /* Nav v4 — flat full-width trên canvas (Binance top-nav): hairline dưới,
+       không glass/blur, logo block yellow đặc + icon ink. */
+    <div className="sticky top-0 z-40 border-b border-line bg-bg">
+      <header className="mx-auto max-w-5xl px-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5">
           <Link to="/" className="flex items-center gap-2 cursor-pointer">
-            <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary/15 border border-primary/40 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]">
-              <Landmark className="text-primary" size={20} />
+            <span className="grid place-items-center w-9 h-9 rounded-md bg-primary">
+              <Landmark className="text-ink" size={20} />
             </span>
-            <span className="font-display font-bold tracking-wider text-lg">
+            <span className="font-bold tracking-tight text-lg text-white">
               BANK<span className="text-primary">·</span>DEPOSIT
             </span>
           </Link>
@@ -100,7 +100,7 @@ export default function Navbar() {
                   `relative px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors duration-200 ${
                     isActive
                       ? "bg-primary/15 text-primary font-semibold"
-                      : "text-subtle hover:text-txt hover:bg-white/5"
+                      : "text-subtle hover:text-txt hover:bg-panel"
                   }`
                 }
               >
@@ -127,7 +127,7 @@ export default function Navbar() {
               </span>
             )}
             {balance !== null && (
-              <span className="num text-sm font-display glow-num text-secondary">{fmtToken(balance, 2)}</span>
+              <span className="num text-sm font-display text-secondary">{fmtToken(balance, 2)}</span>
             )}
             {isTestChain && address && (
               <button
