@@ -71,7 +71,7 @@ function NetworkModal({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Chọn mạng"
-        className="card w-full max-w-xs !p-0"
+        className="card w-full max-w-md max-h-[85vh] overflow-y-auto !p-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-line px-5 py-3.5">

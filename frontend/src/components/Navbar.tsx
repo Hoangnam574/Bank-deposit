@@ -74,8 +74,8 @@ export default function Navbar() {
     <div className="sticky top-0 z-40 border-b border-line bg-bg">
       {/* Full-bleed Binance-style header: logo sát mép trái, cụm ví sát mép phải */}
       <header className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2.5 lg:flex-nowrap">
-          <Link to="/" className="flex items-center gap-2 cursor-pointer">
+        <div className="flex items-center gap-x-2.5 flex-nowrap py-2.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Link to="/" className="flex items-center gap-2 cursor-pointer shrink-0">
             <span className="grid place-items-center w-9 h-9 rounded-md bg-primary">
               <Landmark className="text-ink" size={20} />
             </span>
@@ -84,14 +84,14 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <nav aria-label="Điều hướng chính" className="flex gap-1 flex-wrap">
+          <nav aria-label="Điều hướng chính" className="flex items-center gap-1 flex-nowrap shrink-0">
             {NAV.filter((item) => item.to !== "/admin" || isAdmin).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) =>
-                  `relative px-3 py-1.5 rounded-full text-sm cursor-pointer transition-colors duration-200 ${
+                  `relative px-2.5 xl:px-3 py-1.5 rounded-full text-sm whitespace-nowrap cursor-pointer transition-colors duration-200 ${
                     isActive
                       ? "bg-primary/15 text-primary font-semibold"
                       : "text-subtle hover:text-txt hover:bg-panel"
@@ -113,38 +113,41 @@ export default function Navbar() {
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2.5 flex-wrap justify-end">
+          <div className="ml-auto flex items-center gap-2 flex-nowrap shrink-0 justify-end">
             <NetworkMenu />
             {isAdmin && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[11px] font-semibold text-ok">
+              <span className="inline-flex items-center gap-1 rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[11px] font-semibold text-ok whitespace-nowrap">
                 <ShieldCheck size={12} /> Admin
               </span>
             )}
             {balance !== null && (
-              <span className="num text-sm font-display text-secondary">{fmtToken(balance, 2)}</span>
+              <span className="num text-sm font-display text-secondary hidden sm:inline whitespace-nowrap">{fmtToken(balance, 2)}</span>
             )}
             {isTestChain && address && (
               <button
                 type="button"
                 onClick={faucet}
                 disabled={state.status === "pending"}
-                className="btn btn-outline !py-1.5 !px-3 text-xs inline-flex items-center gap-1"
+                className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs inline-flex items-center gap-1 shrink-0"
               >
-                <Droplet size={14} /> Faucet 1k
+                <Droplet size={14} /> <span className="hidden sm:inline">Faucet 1k</span>
               </button>
             )}
             {address ? (
-              <div className="flex items-center gap-2">
-                <span className="num text-sm" title={demo ? `Hardhat account #${demo.index} — ${demo.role}` : "Account ngoài (có thể không có ETH/USDC local)"}>
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <span
+                  className="num text-sm"
+                  title={demo ? `Hardhat account #${demo.index} — ${demo.role}` : "Account ngoài (có thể không có ETH/USDC local)"}
+                >
                   {address.slice(0, 6)}…{address.slice(-4)}
-                  {demo && <span className="text-xs text-subtle"> (#{demo.index})</span>}
+                  {demo && <span className="text-xs text-subtle hidden xl:inline"> (#{demo.index})</span>}
                 </span>
-                <button type="button" onClick={disconnect} className="btn btn-outline !py-1.5 !px-3 text-xs">
+                <button type="button" onClick={disconnect} className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs shrink-0">
                   Ngắt
                 </button>
               </div>
             ) : (
-              <button type="button" onClick={() => void connect()} disabled={connecting} className="btn btn-cta !py-1.5">
+              <button type="button" onClick={() => void connect()} disabled={connecting} className="btn btn-cta !py-1.5 shrink-0">
                 {connecting ? "Đang kết nối" : "Kết nối ví"}
               </button>
             )}
