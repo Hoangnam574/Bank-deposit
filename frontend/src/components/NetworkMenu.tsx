@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
 import { ChainPill, ALLOWED_CHAINS, CHAIN_LABEL } from "@/components/NetworkGuard";
+import HardhatKeyImport from "@/components/HardhatKeyImport";
 
 export default function NetworkMenu() {
   const { chainId } = useWallet();
@@ -46,18 +47,18 @@ function NetworkModal({ onClose }: { onClose: () => void }) {
 
   const choose = async (c: number) => {
     if (chainId === c) {
-      onClose(); // đang network đó rồi — không gọi switch để tránh popup thừa
+      /* Local: giữ modal mở — khối key import Hardhat hiển thị theo chain local.
+         Mạng khác: đóng như thường. */
+      if (c !== 31337) onClose();
       return;
     }
     setBusy(c);
     const ok = await switchNetwork(c);
     setBusy(null);
-    if (ok) {
-      onClose();
-      /* KHÔNG reload — chainChanged cập nhật chainId state, ContractsProvider
-         tự rebuild theo chain mới (reactive). User đổi mạng lại chỉ cần bấm
-         pill mạng ở header. */
-    }
+    if (ok && c !== 31337) onClose();
+    /* KHÔNG reload — chainChanged cập nhật chainId state, ContractsProvider
+       tự rebuild theo chain mới (reactive). Chọn local → giữ modal mở để
+       người dùng thấy ngay key import ví local. */
     // user bấm Cancel trong popup MetaMask → giữ modal mở để chọn lại
   };
 
@@ -77,7 +78,7 @@ function NetworkModal({ onClose }: { onClose: () => void }) {
           <span className="eyebrow !text-muted">Network</span>
           <h2 className="mt-1.5 text-base font-display font-semibold">Chọn mạng của bạn</h2>
           <p className="text-xs text-subtle mt-1">
-            MetaMask sẽ hiện popup xác nhận sau khi bạn chọn — bấm từ từ, không tự chạy.
+            MetaMask sẽ hiện popup xác nhận sau khi bạn chọn.
           </p>
         </div>
         <div className="p-3">
@@ -110,6 +111,13 @@ function NetworkModal({ onClose }: { onClose: () => void }) {
               </button>
             );
           })}
+          {/* Key import ví local — hiện NGAY trong modal khi đang ở Hardhat
+              Local (key Hardhat không tồn tại trên Sepolia): */}
+          {chainId === 31337 && (
+            <div className="mt-3 pt-3 border-t border-line">
+              <HardhatKeyImport defaultOpen />
+            </div>
+          )}
         </div>
       </div>
     </div>

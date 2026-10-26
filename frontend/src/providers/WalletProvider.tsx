@@ -110,7 +110,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!eth) return;
     let alive = true;
-    const id = window.setInterval(async () => {
+    /* Đọc chainId NGAY khi mount (tránh ~1.5s flash "chain = null" trên F5),
+       rồi mới theo interval mỗi 1.5s. */
+    const readId = async () => {
       try {
         const hex = (await eth.request({ method: "eth_chainId" })) as string | null;
         const got = hexToChainId(hex ?? null);
@@ -118,7 +120,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch {
         // rất hiếm — bỏ qua
       }
-    }, 1500);
+    };
+    void readId();
+    const id = window.setInterval(readId, 1500);
 
     /* Reconnect mượt: có address đã lưu → hỏi provider đã chọn trước đó (rdns),
        fallback injected. eth_accounts KHÔNG bật prompt. */
