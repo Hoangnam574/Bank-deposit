@@ -116,8 +116,14 @@ console.log("---");
 console.log(`📦 Tổng plan hiện có: ${planCount} (muốn ${PLANS.length})`);
 
 // 3) Mint USDC cho deployer + 2 user demo (top-up lên target, idempotent)
+//    Trên mạng public (Sepolia) `<network>.ethers.getSigners()` chỉ trả về
+//    1 signer duy nhất — guard signers[idx] để script chạy được cả local lẫn testnet.
 for (const { name, idx, target } of USER_TARGETS) {
   const s = signers[idx];
+  if (s === undefined) {
+    console.log(`⏭️  ${name} không tồn tại trên mạng ${networkName} (1 signer) — skip`);
+    continue;
+  }
   const bal = await usdc.balanceOf(s.address);
   if (bal >= target) {
     console.log(`⏭️  ${name} đã có ${fmt(bal)} USDC (≥ target) — skip`);

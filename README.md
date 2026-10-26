@@ -74,18 +74,23 @@ MetaMask: **Add network → RPC `http://127.0.0.1:8545` chainId 31337**, rồi *
 ```bash
 # .env trong ac-hardhat-template-v2/ :
 TESTNET_PRIVATE_KEY=0x...    # ví có Sepolia ETH (faucet: sepolia.dev / infura)
+SEPOLIA_RPC_URL=...          # RPC public (publicnode/sepolia.infura.io)
 ETHERSCAN_API_KEY=...
 
-npx hardhat ignition deploy ignition/modules/BankDeposit.ts --network sepolia
-npx hardhat --network sepolia run scripts/exportFrontend.ts   # cập nhật frontend/src/config
-npx hardhat --network sepolia run scripts/seed.ts             # cần caller = deployer
+# Deploy + verify (Ignition tự verify Etherscan/Sourcify nếu có ETHERSCAN_API_KEY):
+HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=true npx hardhat --network sepolia ignition deploy ignition/modules/BankDeposit.ts --verify
+npx hardhat run scripts/seed.ts --network sepolia            # tạo 4 plan + mint + fund vault (idempotent)
+npm run export:frontend                                      # xuất ABI + addresses.json cho frontend (mọi chain)
+npx hardhat run scripts/bot.ts --network sepolia             # (tùy chọn) auto-renew bot — poll vô hạn, Ctrl+C để dừng
 ```
 
 | Contract | Địa chỉ Sepolia | Trạng thái |
 |---|---|---|
-| MockUSDC | `0x…` — **TODO: điền sau khi deploy** | ⬜ T5.7 chờ key |
-| VaultManager | `0x…` | ⬜ |
-| SavingCore | `0x…` | ⬜ |
+| MockUSDC | [`0xF20376156c60FCC68DC360e216A350eAA453d67e`](https://sepolia.etherscan.io/address/0xF20376156c60FCC68DC360e216A350eAA453d67e#code) | ✅ |
+| VaultManager | [`0x6364C8b3042cf79A184062e4e56233fF489E55E9`](https://sepolia.etherscan.io/address/0x6364C8b3042cf79A184062e4e56233fF489E55E9#code) | ✅ |
+| SavingCore | [`0x51Bdfd36F72E554831529946c8B0a2A3D4346205`](https://sepolia.etherscan.io/address/0x51Bdfd36F72E554831529946c8B0a2A3D4346205#code) | ✅ |
+
+> Deployed 2026-10-26 · deployer `0x649D72EF5d88f0b0bC4ACcF38C8d534B23850295` · 3 contracts **verified + published source** trên Etherscan (và Sourcify) · seed hoàn tất: 4 plan (180/30/90/365 ngày), vault 500.000 USDC, deployer nắm 100.000 USDC faucet. Frontend (`frontend/src/config/addresses.json`) đã nhận chain `11155111` — để demo Sepolia: **MetaMask switch sang mạng Sepolia** là app tự nhận contract thật.
 
 ---
 

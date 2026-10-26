@@ -399,10 +399,10 @@ gantt
 | T5.4 | `scripts/exportFrontend.ts` | Đọc artifacts + `deployed_addresses.json` theo chainId → ghi `frontend/src/abis/*.json`, `frontend/src/config/addresses.json` | Frontend build không cần sửa tay |
 | T5.5 | `scripts/timeTravel.ts` | `evm_increaseTime` + `evm_mine` (local only), tham số ngày | Demo maturity trong 1 phút |
 | T5.6 | `scripts/interact.ts` | Smoke flow CLI: approve → open → time travel → withdraw, in before/after balance | Chạy được trên localhost |
-| T5.7 | Deploy Sepolia | `HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=true npx hardhat ignition deploy --network sepolia ignition/modules/BankDeposit.ts`; `seed:sepolia`; lưu addresses | Contract verified (nếu có API key) |
-| T5.8 | Verify | `npx hardhat verify --network sepolia <address> <args>` hoặc `ignition verify` | Trạng thái verified trên Etherscan |
+| T5.7 | Deploy Sepolia | ✅ Deployed 2026-10-26: `HARDHAT_IGNITION_CONFIRM_DEPLOYMENT=true npx hardhat --network sepolia ignition deploy ignition/modules/BankDeposit.ts --verify`; seed `--network sepolia` (guard 1-signer); addresses đã lưu vào README §2.3 + `addresses.json` | MockUSDC `0xF203…d67e` · Vault `0x6364…55E9` · Core `0x51Bd…6205` |
+| T5.8 | Verify | ✅ Ignition `--verify` tự chạy: 3/3 contracts **verified** trên Etherscan `#code` + Sourcify (MyToken/MyNFT cũ của template đã onDelete sót trong journal chain-11155111 — vô hại, không artifact) | Etherscan OK |
 
-**Gate P5:** Trên localhost: deploy → seed → open deposit → time travel → bot renew → withdraw, tất cả bằng script, không thao tác tay.
+**Gate P5:** Trên localhost: deploy → seed → open deposit → time travel → bot renew → withdraw, tất cả bằng script, không thao tác tay. ✅ (2026-10-23) · Sepolia: deploy + seed + export ✅ (2026-10-26)
 
 ---
 
@@ -725,7 +725,7 @@ docs(readme): add design answers and variant table
 | P2 SavingCore base | ✅ | 2026-10-23 | SavingCore.sol (5 flow base + views); 121/121 test xanh; coverage 97.53% line |
 | P3 Bonus C1–C5 | ✅ | 2026-10-23 | C1 defer+claim, C3 partial, C4 top-up, C5 emergency + views isMatured/getUserDepositIds; 156/156 test; coverage 96.88% |
 | P4 Tests + coverage | ✅ | 2026-10-23 | 164 test (MockUSDC 5 · VM 30 · SC base 86 · bonus 35 · Security 8); coverage 96.52% lines; MaliciousDepositor 0 lượt attack thành công |
-| P5 Deploy + bot | ✅ (T5.7/T5.8 Sepolia chờ user có key) | 2026-10-23 | Ignition module BankDeposit.ts + seed/bot/interact/timeTravel/withdraw/exportFrontend; gate P5 chạy 1 mạch trên localhost (deploy → seed → open → timeTravel → bot renew #1/#4 → withdraw lãi ghép 5,000→5,073.97→5,149.04); seed idempotent |
+| P5 Deploy + bot | ✅ (T5.7/T5.8 Sepolia deploy + seed + verify 2026-10-26) | 2026-10-23 | Ignition module BankDeposit.ts + seed/bot/interact/timeTravel/withdraw/exportFrontend; gate P5 chạy 1 mạch trên localhost (deploy → seed → open → timeTravel → bot renew #1/#4 → withdraw lãi ghép 5,000→5,073.97→5,149.04); seed idempotent · **Sepolia 2026-10-26**: 3 contracts deployed + verified (Etherscan #code + Sourcify) — MockUSDC `0xF20376156c60FCC68DC360e216A350eAA453d67e`, Vault `0x6364C8b3042cf79A184062e4e56233fF489E55E9`, Core `0x51Bdfd36F72E554831529946c8B0a2A3D4346205`; seed 4 plan + vault 500k USDC (guard 1-signer cho mạng public); `addresses.json` nhận chain 11155111 |
 | P6 Frontend | ✅ (T6.16 E2E full-flow chờ demo manual với MetaMask) | 2026-10-26 | Vite+React-TS+Tailwind v4 (`@theme` tokens, Orbitron/Exo 2); Wallet/Contracts/Toast providers; NetworkGuard + Faucet; 5 pages (Dashboard/Open/Deposits/Detail/Admin); `npm run build` TS-clean; dev server serve OK với deploy+seed local · **UI redesign v3** (5 skill frontend — ui-ux-pro-max/redesign/high-end/design-taste/web-design-guidelines + quality pass vercel-react-*): tokens & component layer `.card/.eyebrow/.num/.btn*/.progress-*` scaleX GPU, skeleton loaders toàn route, sticky nav island blur, bento bất đối xứng + filler CTA, segmented filter `aria-pressed`, a11y sr-only/aria-busy · **Playwright-verified**: console 0 errors, 0 overflow 375/768/1024/1440, keyboard focus, skeleton shape match · **Fix bug P0** ContractsProvider key mismatch addresses.json (crash trắng trang khi có ví) · security pass: grep sinks 0, npm audit prod 0, gitleaks 0 leaks (SECURITY_PLAN §3b/§3c) |
 | P7 Docs + video | ⬜ | | |
 
@@ -750,4 +750,4 @@ docs(readme): add design answers and variant table
 
 > **Nguyên tắc vàng:** *Base flows đúng + số liệu biến thể đúng + giải thích được code* = 90 điểm. Bonus chỉ là phần cộng thêm. Đừng đánh đổi độ ổn định của base để lấy C3–C5.
 
-| P7 Docs + demo | ? (video + Sepolia + tag 1.0 ch? user) | 2026-10-24 | README.md root (variant table, quick start, architecture, Design Answers 7 c�u + code pointer, C1�C5 table, coverage, video script, limitations); SECURITY_PLAN.md (threat model 14 vector + roadmap S1�S4); npm audit 0 vuln (prod deps). C�n: quay video theo script �7, deploy Sepolia (T5.7/T5.8), ch?p coverage.png, gitleaks, tag v1.0 |
+| P7 Docs + demo | 🔶 (còn: video + coverage.png + tag v1.0 — Sepolia T5.7/T5.8 xong 2026-10-26) | 2026-10-24 | README.md root (variant table, quick start, architecture, Design Answers 7 câu + code pointer, C1–C5 table, coverage, video script, limitations); SECURITY_PLAN.md (threat model 14 vector + roadmap S1–S4); npm audit 0 vuln (prod deps). Sepolia deployed + verified + seed xong 2026-10-26 (3 contracts verified Etherscan/Sourcify + seed 4 plan + vault 500k USDC). Còn lại: quay video theo script §7, chụp coverage.png, gitleaks cuối, tag v1.0 |
