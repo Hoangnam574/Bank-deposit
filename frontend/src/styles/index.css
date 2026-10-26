@@ -19,7 +19,6 @@
 
   /* Neutral + semantic (trắng chỉ dành cho headline) */
   --color-ink: #181a20; /* on-primary text */
-  --color-hairline-light: #eaecef; /* hairline-on-light (footer sáng) */
 
   /* Accent duy nhất — yellow carries every primary CTA */
   --color-primary: #fcd535;

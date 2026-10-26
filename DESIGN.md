@@ -632,3 +632,11 @@ Binance's radius hierarchy is tighter than typical marketing systems — most su
 - Form validation states beyond `{component.text-input-on-light}` defaults are not extracted — error / success input variants would need a sign-up or order-confirmation flow to confirm.
 - The trading dashboard surfaces (Spot / Futures / Margin) were not in the analyzed URL set; their order book, candlestick chart configuration, and position-management cards are not documented here.
 - The light/dark theme toggle behavior (whether transactional pages can be forced dark by user preference) is product behavior, not extracted from the marketing surfaces.
+
+## Local override (Bank Deposit DApp)
+
+- Footer dùng ooter-dark (nền trùng canvas #0b0e11, hairline #2b3139, chữ muted) thay cho
+  ooter-light #fafafa của spec gốc — theo yêu cầu người dùng (footer trùng màu nền).
+- Header full-bleed, không grid 6 cột spec: logo sát mép trái, cụm ví sát mép phải,
+  content shell 1680px.
+- Modal WalletPicker (multi-wallet EIP-6963): backdrop đen mờ + card surface-card-dark.

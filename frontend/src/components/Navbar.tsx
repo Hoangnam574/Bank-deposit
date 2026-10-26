@@ -4,8 +4,7 @@
  * Faucet: mint 1.000 MockUSDC, chỉ hiện khi chain là local/testnet (T6.12).
  */
 import { useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
-import { Landmark, Droplet, ShieldCheck } from "lucide-react";
+import { Link, NavLink } from "react-router-dom";import { Landmark, Droplet, ShieldCheck } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
@@ -13,6 +12,7 @@ import { fmtToken, SCALAR } from "@/lib/format";
 import { findHardhatAccount } from "@/lib/accounts";
 import { ChainPill } from "@/components/NetworkGuard";
 import { useTx } from "@/hooks/useTx";
+import { useAdminRole } from "@/hooks/useAdminRole";
 
 const NAV = [
   { to: "/", label: "Kế hoạch" },
@@ -26,14 +26,13 @@ export default function Navbar() {
   const { contracts } = useContracts();
   const signerC = useSignerContracts();
   const { run, state } = useTx();
+  const { isAdmin } = useAdminRole();
   const [balance, setBalance] = useState<bigint | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  /* USDC balance + vai trò vault owner — refresh khi tx thành công (bank:tx-ok) */
+  /* USDC balance — refresh khi tx thành công (bank:tx-ok); vai trò admin dùng useAdminRole */
   useEffect(() => {
     if (!contracts || !address) {
       setBalance(null);
-      setIsAdmin(false);
       return;
     }
     let cancelled = false;
@@ -41,12 +40,6 @@ export default function Navbar() {
       try {
         const bal = (await contracts.usdc.balanceOf(address)) as bigint;
         if (!cancelled) setBalance(bal);
-      } catch {
-        /* giữ nguyên */
-      }
-      try {
-        const owner = String(await contracts.vault.owner()).toLowerCase();
-        if (!cancelled) setIsAdmin(owner === address.toLowerCase());
       } catch {
         /* giữ nguyên */
       }
@@ -92,7 +85,7 @@ export default function Navbar() {
           </Link>
 
           <nav aria-label="Điều hướng chính" className="flex gap-1 flex-wrap">
-            {NAV.map((item) => (
+            {NAV.filter((item) => item.to !== "/admin" || isAdmin).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

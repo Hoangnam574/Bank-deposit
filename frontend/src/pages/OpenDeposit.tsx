@@ -42,6 +42,16 @@ export default function OpenDeposit() {
     }
   }, [amountStr]);
 
+  /* Auto-select plan đề xuất (tenor 180 ngày) ngay khi vào /open —
+     form/số tiền bật sẵn, không bắt user bấm chọn plan trước */
+  useEffect(() => {
+    if (selected !== null || plans.length === 0) return;
+    const rec =
+      plans.find((p) => Number(p.tenorDays) === 180 && p.enabled) ??
+      plans.find((p) => p.enabled);
+    if (rec) setSelected(rec.id);
+  }, [plans, selected]);
+
   /* Đọc allowance + balance mỗi khi plan/amount/address đổi */
   useEffect(() => {
     if (!signerC || !address) return;
