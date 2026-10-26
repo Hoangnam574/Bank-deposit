@@ -151,16 +151,19 @@ export default function OpenDeposit() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-6" aria-label="Danh sách plan">
-        {plans.map((p) => (
-          <PlanCard
-            key={p.id}
-            plan={p}
-            variant={Number(p.tenorDays) === 180}
-            onSelect={(sel: PlanRow) => setSelected(sel.id)}
-            selected={selected === p.id}
-            compact
-          />
-        ))}
+        {/* Chỉ hiện plan đang bật — plan disable không còn là offer (user: "disable thì không hiện plan nữa") */}
+        {plans
+          .filter((p) => p.enabled)
+          .map((p) => (
+            <PlanCard
+              key={p.id}
+              plan={p}
+              variant={Number(p.tenorDays) === 180}
+              onSelect={(sel: PlanRow) => setSelected(sel.id)}
+              selected={selected === p.id}
+              compact
+            />
+          ))}
       </div>
 
       {/* ── Form + sticky summary (2 cột từ lg) ─── */}

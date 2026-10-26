@@ -6,15 +6,16 @@
  *   - Renew               → giữ plan cũ hoặc plan mới (enabled)
  *   - Pause hoạt động     → Emergency Withdraw C5 nếu pause ≥ 7 ngày
  *   - có pending lãi NỢ (C1 defer) → Claim Pending
- * Mọi action có confirm (window.confirm) + map lỗi thân thiện.
+ * Mọi action có confirm (ConfirmDialog in-app) + map lỗi thân thiện.
  */
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Loader2, Info } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2, SearchX } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
 import NoDeploymentState from "@/components/NoDeploymentState";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";
 import { useTx } from "@/hooks/useTx";
@@ -60,6 +61,7 @@ export default function DepositDetail() {
   const signerC = useSignerContracts();
   const { address, getBrowser } = useWallet();
   const { state, run } = useTx();
+  const confirm = useConfirm();
 
   const [d, setD] = useState<Detail | null>(null);
   const [pv, setPv] = useState<Preview | null>(null);
@@ -166,12 +168,30 @@ export default function DepositDetail() {
 
   if (notFound) {
     return (
-      <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 py-16 text-subtle text-center">
-        <Info className="mx-auto inline text-subtle" size={40} aria-hidden />
-        <p>Không tìm thấy deposit #{depositId} (NFT có thể đã burn sau khi rút).</p>
-        <Link to="/deposits" className="btn btn-outline mt-4 cursor-pointer">
-          ← Về sổ tiết kiệm
-        </Link>
+      <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-20">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="mt-8 btn btn-outline !py-1.5 !px-3 text-xs inline-flex items-center gap-1 cursor-pointer"
+        >
+          <ArrowLeft size={14} /> Trở về
+        </button>
+        <section className="mt-4 card !rounded-2xl py-16 px-6 text-center">
+          <SearchX size={40} className="text-subtle mx-auto" aria-hidden />
+          <h1 className="mt-4 text-xl font-semibold font-display text-txt">Không tìm thấy deposit #{depositId}</h1>
+          <p className="mt-2 text-sm text-subtle max-w-md mx-auto">
+            NFT của deposit này có thể đã burn sau khi rút, hoặc URL trỏ đến ID chưa từng tồn tại trên
+            mạng đang kết nối. Kiểm tra ID trong sổ tiết kiệm của bạn.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <Link to="/deposits" className="btn btn-cta cursor-pointer">
+              Về sổ tiết kiệm
+            </Link>
+            <Link to="/" className="btn btn-outline cursor-pointer">
+              Về trang chủ
+            </Link>
+          </div>
+        </section>
       </main>
     );
   }
@@ -244,7 +264,17 @@ export default function DepositDetail() {
           value={nowSec > 0 ? <Countdown targetSec={d.maturityAt} nowSec={nowSec} /> : <span className="num">{fmtDate(d.maturityAt)}</span>}
         />
         <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"} value={<span className="num text-ok">+{fmtToken(pv.interest, 4)}</span>} />
-        <InfoBox label="Phạt nếu rút sớm" value={<span className="num text-warn">−{fmtToken(pv.penalty, 2)}</span>} />
+        <InfoBox
+          label="Phạt nếu rút sớm (rate)"
+          value={
+            <span className="text-warn">
+              <span className="num">−{formatBps(d.penaltyBpsAtOpen)}</span>
+              <span className="block text-[11px] text-subtle font-normal mt-0.5">
+                ≈ {fmtToken(pv.penalty, 2)} USDC với principal hiện tại
+              </span>
+            </span>
+          }
+        />
       </div>
 
       {/* Progress kỳ hạn (startAt → maturityAt) — scaleX GPU-safe */}
@@ -290,8 +320,9 @@ export default function DepositDetail() {
         <div className="card mt-4 border-err/50 bg-err/5 text-sm flex items-start gap-2" role="alert">
           <AlertTriangle size={18} className="text-err shrink-0 mt-0.5" />
           <span>
-            Rút sớm trước maturity: mất toàn bộ lãi tích luỹ + phạt {formatBps(d.penaltyBpsAtOpen)} → chỉ nhận{" "}
-            <strong>{fmtToken(pv.amountIfEarly, 2)} USDC</strong> (−{fmtToken(pv.penalty, 2)}).
+            Rút sớm trước maturity: mất toàn bộ lãi tích luỹ + phạt {formatBps(d.penaltyBpsAtOpen)} (≈{" "}
+            {fmtToken(pv.penalty, 2)} USDC) → chỉ nhận{" "}
+            <strong>{fmtToken(pv.amountIfEarly, 2)} USDC</strong>.
           </span>
         </div>
       )}
@@ -371,13 +402,29 @@ export default function DepositDetail() {
                 type="button"
                 className="btn btn-danger"
                 disabled={pending}
-                onClick={() => {
-                  if (window.confirm(`RÚT SỚM mất lãi + phạt ${fmtToken(pv.penalty, 2)} USDC. Tiếp tục?`)) {
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Rút sớm",
+                    message: (
+                      <>
+                        Rút <strong className="num">{fmtToken(pv.principal, 2)} USDC</strong> trước maturity
+                        (maturing còn <strong>{Number(d.maturityAt) > nowSec ? Math.ceil((Number(d.maturityAt) - nowSec) / 86400) : 0} ngày</strong>):
+                        mất toàn bộ lãi tích luỹ (<span className="num text-ok">−{fmtToken(pv.interest, 4)}</span>) +{" "}
+                        <strong className="num text-warn">phạt {formatBps(d.penaltyBpsAtOpen)}</strong> (
+                        ≈{fmtToken(pv.penalty, 2)} USDC).
+                        <br />
+                        Nhận ngay: <strong className="num">{fmtToken(pv.amountIfEarly, 2)} USDC</strong>.
+                      </>
+                    ),
+                    tone: "danger",
+                    okLabel: "Đồng ý rút sớm",
+                  });
+                  if (ok) {
                     contractCall("Rút sớm", async () => (await signerC!.core.earlyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
                   }
                 }}
               >
-                Rút sớm (−{fmtToken(pv.penalty, 2)} penalty)
+                Rút sớm (−{formatBps(d.penaltyBpsAtOpen)} penalty)
               </button>
             )}
 
@@ -387,8 +434,18 @@ export default function DepositDetail() {
                 className="btn btn-outline"
                 disabled={pending || amount === null || amount === 0n || amount >= d.principal}
                 title={amount === null ? "Nhập số lượng ở trên" : amount >= d.principal ? "Phải < principal" : ""}
-                onClick={() => {
-                  if (window.confirm(`Rút một phần ${fmtToken(amount!)} USDC — tính lãi weighted (C3). OK?`)) {
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Rút một phần",
+                    message: (
+                      <>
+                        Rút <strong className="num">{fmtToken(amount!)} USDC</strong> khỏi deposit&nbsp;#{depositId}.
+                        Lãi của phần gốc rút được tính weighted (C3); phần còn lại tiếp tục tích lãi đến maturity.
+                      </>
+                    ),
+                    okLabel: "Rút một phần",
+                  });
+                  if (ok) {
                     contractCall("Rút một phần", async () => (await signerC!.core.partialEarlyWithdraw(depositId!, amount!)) as unknown as ContractTransactionResponse);
                   }
                 }}
@@ -403,8 +460,19 @@ export default function DepositDetail() {
                   type="button"
                   className="btn btn-outline"
                   disabled={pending || amount === null || amount === 0n}
-                  onClick={() => {
-                    if (window.confirm("Top-up thêm vào principal hiện tại?")) {
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: "Nạp thêm (top-up) vào deposit",
+                      message: (
+                        <>
+                          Gửi thêm <strong className="num">{fmtToken(amount!)} USDC</strong> vào deposit #{depositId} —
+                          hợp nhất vào principal, lãi tiếp tục tính trên số mới đến maturity (APR/tenor snapshot
+                          giữ nguyên).
+                        </>
+                      ),
+                      okLabel: "Top-up",
+                    });
+                    if (ok) {
                       contractCall("Top-up", async () => (await signerC!.core.topUpDeposit(depositId!, amount!)) as unknown as ContractTransactionResponse);
                     }
                   }}
@@ -416,6 +484,7 @@ export default function DepositDetail() {
                   type="button"
                   className="btn btn-outline"
                   disabled={pending || amount === null || amount === 0n}
+                  title="Bước 1: Approve — cho phép hợp đồng rút USDC từ ví vào vault khi bạn nạp thêm. ERC-20 bắt buộc bước này trước top-up; chỉ cần làm 1 lần cho số tiền đó."
                   onClick={() => {
                     if (!signerC) return;
                     contractCall("Approve USDC (top-up)", async () =>
@@ -423,7 +492,7 @@ export default function DepositDetail() {
                     );
                   }}
                 >
-                  1. Approve (cho top-up)
+                  1. Approve ({amount !== null ? fmtToken(amount, 2) : ""} USDC)
                 </button>
               ))}
 
@@ -432,9 +501,21 @@ export default function DepositDetail() {
                 type="button"
                 className="btn btn-outline"
                 disabled={pending || (customRenew && renewPlan === null)}
-                onClick={() => {
+                title="Renew: nói lại ký hết kỳ — toàn bộ principal + lãi ghép thành 1 kỳ hạn mới (tenor/APR snapshot giữ nguyên nếu giữ plan)."
+                onClick={async () => {
                   const target = customRenew ? `plan #${renewPlan}` : "plan hiện có";
-                  if (window.confirm(`Renew ngay — principal + lãi ghép vào ${target}, tenor giữ nguyên?`)) {
+                  const ok = await confirm({
+                    title: "Renew (tái gửi tiết kiệm)",
+                    message: (
+                      <>
+                        Principal + lãi ghép chuyển thành kỳ hạn mới theo{" "}
+                        <strong>{target}</strong>. APR snapshot {formatBps(d.aprBpsAtOpen)} và tenor{" "}
+                        {Number(d.tenorDays)} ngày giữ nguyên. NFT nhận status AutoRenewed.
+                      </>
+                    ),
+                    okLabel: "Renew ngay",
+                  });
+                  if (ok) {
                     contractCall("Renew", async () =>
                       (await signerC!.core.renewDeposit(depositId!, customRenew ? renewPlan! : d.planId)) as unknown as ContractTransactionResponse,
                     );
@@ -455,8 +536,14 @@ export default function DepositDetail() {
                 type="button"
                 className="btn btn-danger"
                 disabled={pending}
-                onClick={() => {
-                  if (window.confirm("Emergency Withdraw C5 — không lãi, không penalty. OK?")) {
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: "Emergency Withdraw (C5)",
+                    message: "Rút khi hệ thống pause ≥ 7 ngày: nhận principal, không có lãi và không bị phạt.",
+                    tone: "danger",
+                    okLabel: "Emergency withdraw",
+                  });
+                  if (ok) {
                     contractCall("Emergency withdraw", async () => (await signerC!.core.emergencyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
                   }
                 }}

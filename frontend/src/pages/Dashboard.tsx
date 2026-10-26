@@ -101,11 +101,13 @@ export default function Dashboard() {
         )}
         {!loading && plans.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {plans.map((p) => (
-              <div key={p.id} className={variantPlan?.id === p.id ? "sm:col-span-2" : undefined}>
-                <PlanCard plan={p} variant={variantPlan?.id === p.id} />
-              </div>
-            ))}
+            {plans
+              .filter((p) => p.enabled)
+              .map((p) => (
+                <div key={p.id} className={variantPlan?.id === p.id ? "sm:col-span-2" : undefined}>
+                  <PlanCard plan={p} variant={variantPlan?.id === p.id} />
+                </div>
+              ))}
             {/* Filler CTA — lấp hole của bento (high-end §3B) */}
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="card card-int h-full flex flex-wrap items-center justify-between gap-3 border-dashed !border-line">

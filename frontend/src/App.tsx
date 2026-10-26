@@ -6,6 +6,7 @@
 import { HashRouter, Routes, Route, Link, Navigate } from "react-router-dom";
 import { WalletProvider } from "@/providers/WalletProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { ContractsProvider } from "@/providers/ContractsProvider";
 import Navbar from "@/components/Navbar";
 import StatStrip from "@/components/StatStrip";
@@ -44,6 +45,7 @@ export default function App() {
   return (
     <WalletProvider>
       <ToastProvider>
+        <ConfirmProvider>
         <ContractsProvider>
           <HashRouter>
             {/* Shell flex column: footer luôn ghim đáy viewport kể cả khi nội dung ngắn */}
@@ -79,6 +81,7 @@ export default function App() {
               </div>
             </HashRouter>
         </ContractsProvider>
+        </ConfirmProvider>
       </ToastProvider>
     </WalletProvider>
   );
