@@ -40,25 +40,18 @@ export function ChainPill({ chainId }: { chainId: number | null }) {
 }
 
 export function NetworkGuard() {
-  const { chainId, hasWallet, switchNetwork } = useWallet();
+  const { chainId, hasWallet } = useWallet();
   if (!hasWallet || isAllowedChain(chainId)) return null;
 
   return (
     <div role="alert" className="bg-err/10 border-b border-err/40 px-4 py-2.5 text-sm flex flex-wrap items-center gap-3">
-      <AlertTriangle size={16} className="text-err" />
+      <AlertTriangle size={16} className="text-err shrink-0" />
       <span>
         MetaMask đang ở <strong>{chainLabel(chainId)}</strong> — dapp cần Hardhat Local (31337) hoặc Sepolia (11155111).
       </span>
-      {ALLOWED_CHAINS.map((c) => (
-        <button
-          key={c}
-          type="button"
-          className="btn btn-outline !py-1 !px-3 text-xs cursor-pointer"
-          onClick={() => void switchNetwork(c)}
-        >
-          Switch → {CHAIN_LABEL[c]}
-        </button>
-      ))}
+      <span className="text-subtle text-xs">
+        Bấm vào pill tên mạng ở góc trên bên phải (kể cả khi mạng lạ) để chọn lại mạng.
+      </span>
     </div>
   );
 }

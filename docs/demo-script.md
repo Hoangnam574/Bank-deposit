@@ -86,8 +86,7 @@ Lưu ý kỹ thuật: hash-only đổi URL không reload trang — luôn F5 sau 
 
 - Tab Etherscan Sepolia: chỉ địa chỉ Vault (mã nguồn verified).
 - Thoại: "Trên Sepolia: MockUSDC `0xF203…d67e`, Vault `0x6364…55E9`, Core `0x51Bd…6205`."
-- MetaMask switch network sang Sepolia: UI badge đổi thành `Sepolia · 11155111`.
-- Khuyến nghị chỉ demo **đọc dữ liệu** (dashboard + sổ) trên Sepolia; toàn bộ ghi có tx đã demo ở local.
+- Bấm **pill mạng góc phải header** → modal trong app → **Sepolia** → MetaMask xác nhận 1 lần → badge đổi `Sepolia · 11155111` ngay (không reload).- Khuyến nghị chỉ demo **đọc dữ liệu** (dashboard + sổ) trên Sepolia; toàn bộ ghi có tx đã demo ở local.
   (Nếu muốn mở sổ thật trên Sepolia: cần dư USDC testnet đã seed từ deployer, và mọi tx đều thật.)
 
 ## Cảnh 8 — Outro (8:20–8:50)

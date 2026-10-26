@@ -1,7 +1,8 @@
 /**
  * WalletProvider (T6.3, v2 multi-wallet) — kết nối qua EIP-6963:
  *   - phát hiện MỌI ví cài sẵn (MetaMask, Rabby, OKX…) qua event
- *     `eip6963:announceProvider`; khi có >1 ví: mở picker cho user bấm chọn.
+ *     `eip6963:announceProvider`; bấm "Kết nối ví" LUÔN mở picker để user
+ *     bấm chọn ví muốn dùng (kể cả trang chỉ có 1 ví).
                     * fallback khi trang chỉ có `window.ethereum` (1 ví) → connect trực tiếp.
  *   - BrowserProvider + getSigner của ethers v6 trên provider user đã chọn
  *   - listen accountsChanged / chainChanged trên ĐÚNG provider đó
@@ -51,7 +52,7 @@ interface WalletCtx {
   error: string | null;
   /** trang có ví web3 nào không (injected hoặc EIP-6963)? */
   hasWallet: boolean;
-  /** gọi connect() → 0/1 ví: nối ngay; >1 ví: mở picker trả về null */
+  /** connect() không arg → LUÔN mở picker cho user bấm chọn ví (kể cả 1 ví) */
   connect: (entry?: WalletEntry) => Promise<string | null>;
   /** ví user chọn (null = fallback window.ethereum chưa connect) */
   activeChain: Eip1193 | null;
@@ -61,7 +62,8 @@ interface WalletCtx {
   /** BrowserProvider bọc provider đã chọn; chỉ lấy khi đã kết nối */
   getBrowser: () => BrowserProvider | null;
   /* multi-wallet picker state */
-  wallets: WalletEntry[];
+  /** list ví có thể chọn = các ví EIP-6963 + fallback window.ethereum */
+  walletOptions: WalletEntry[];
   pickOpen: boolean;
   closePicker: () => void;
 }
@@ -169,16 +171,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setError(null);
     let provider = entry?.provider ?? null;
     if (!provider) {
-      const list = entriesRef.current;
-      if (list.length > 1) {
-        setPickOpen(true); // nhiều ví cài song song → bấm chọn trong picker
-        return null;
-      }
-      provider = list[0]?.provider ?? getInjected();
-      if (!provider) {
+      /* User bấm "Kết nối ví": LUÔN mở picker để chọn — kể cả chỉ có 1 ví.
+         (Đừng tự connect lặng lẽ: user muốn chủ động chọn.) */
+      const hasAny = entriesRef.current.length > 0 || Boolean(getInjected());
+      if (!hasAny) {
         setError("Chưa cài ví (MetaMask/Rabby…) — cài rồi thử lại");
         return null;
       }
+      setPickOpen(true);
+      return null;
     }
     setConnecting(true);
     try {
@@ -241,6 +242,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return eth ? new BrowserProvider(eth) : null;
   }, [eth]);
 
+  /** danh sách option cho picker: ví EIP-6963 được announce + fallback window.ethereum */
+  const walletOptions = useMemo<WalletEntry[]>(() => {
+    const list = [...entries];
+    if (injected && !list.some((w) => w.provider === injected)) {
+      list.push({
+        info: { uuid: "injected-fallback", name: "MetaMask (ví mặc định của trang)", icon: "", rdns: "window.ethereum" },
+        provider: injected,
+      });
+    }
+    return list;
+  }, [entries, injected]);
+
   const value = useMemo(
     () => ({
       address,
@@ -253,11 +266,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       disconnect,
       switchNetwork,
       getBrowser,
-      wallets: entries,
+      walletOptions,
       pickOpen,
       closePicker: () => setPickOpen(false),
     }),
-    [address, chainId, connecting, error, eth, activeChain, connect, disconnect, switchNetwork, getBrowser, entries, pickOpen],
+    [address, chainId, connecting, error, eth, activeChain, connect, disconnect, switchNetwork, getBrowser, walletOptions, pickOpen],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

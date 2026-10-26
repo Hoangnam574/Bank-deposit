@@ -10,7 +10,7 @@ import { useWallet } from "@/providers/WalletProvider";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
 import { fmtToken, SCALAR } from "@/lib/format";
 import { findHardhatAccount } from "@/lib/accounts";
-import { ChainPill } from "@/components/NetworkGuard";
+import NetworkMenu from "@/components/NetworkMenu";
 import { useTx } from "@/hooks/useTx";
 import { useAdminRole } from "@/hooks/useAdminRole";
 
@@ -114,7 +114,7 @@ export default function Navbar() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2.5 flex-wrap justify-end">
-            <ChainPill chainId={chainId} />
+            <NetworkMenu />
             {isAdmin && (
               <span className="inline-flex items-center gap-1 rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[11px] font-semibold text-ok">
                 <ShieldCheck size={12} /> Admin

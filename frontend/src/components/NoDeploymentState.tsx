@@ -22,7 +22,7 @@ export default function NoDeploymentState({ page }: { page: string }) {
     setSwitching(target);
     await switchNetwork(target);
     setSwitching(null);
-    window.location.reload();
+    /* KHÔNG reload — chainChanged cập nhật state, mọi hook chạy theo chain mới. */
   };
 
   return (
@@ -67,7 +67,9 @@ export default function NoDeploymentState({ page }: { page: string }) {
         </button>
       </div>
 
-      {/* Hướng dẫn account Hardhat — nguyên nhân phổ biến nhất khi dùng local */}
+      {/* Hướng dẫn account Hardhat — CHỈ hiện khi đang mạng local 31337
+          (key Hardhat không tồn tại trên Sepolia): */}
+      {chainId === 31337 && (
       <details className="mt-4 text-sm">
         <summary className="cursor-pointer text-subtle hover:text-txt inline-flex items-center gap-1">
           <KeyRound size={14} /> Account ví không có tiền local? Import key Hardhat (mở rộng)
@@ -104,6 +106,7 @@ export default function NoDeploymentState({ page }: { page: string }) {
           <p className="text-[11px] text-subtle">Key mặc định của Hardhat — chỉ dùng demo local, không phải tài sản thật.</p>
         </div>
       </details>
+      )}
     </div>
   );
 }

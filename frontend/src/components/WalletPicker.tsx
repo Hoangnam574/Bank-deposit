@@ -1,14 +1,15 @@
 /**
- * WalletPicker — modal chọn ví khi trang có ≥2 wallet cài song song
- * (EIP-6963: MetaMask, Rabby, OKX…). User bấm chọn → connect qua provider đó.
+ * WalletPicker — modal chọn ví mỗi khi bấm "Kết nối ví" (LUÔN hiển thị,
+ * kể cả chỉ 1 ví — user chủ động chọn). Danh sách = các ví EIP-6963
+ * announce (MetaMask/Rabby/OKX…) + fallback window.ethereum.
  * Binance style: backdrop đen mờ, card #1E2329 phẳng + hairline (không glass).
  */
 import { useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Wallet } from "lucide-react";
 import { useWallet, type WalletEntry } from "@/providers/WalletProvider";
 
 export default function WalletPicker() {
-  const { wallets, pickOpen, closePicker, connect, connecting } = useWallet();
+  const { walletOptions, pickOpen, closePicker, connect, connecting } = useWallet();
 
   /* ESC để đóng; khoá scroll nền khi modal mở */
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function WalletPicker() {
         </div>
 
         <div className="p-3">
-          {wallets.map((w) => (
+          {walletOptions.map((w) => (
             <button
               key={w.info.uuid}
               type="button"
@@ -68,7 +69,13 @@ export default function WalletPicker() {
               onClick={() => pick(w)}
               className="w-full flex items-center gap-3 rounded-lg border border-transparent hover:border-line hover:bg-panel px-3 py-2.5 cursor-pointer transition-colors duration-200 text-left disabled:opacity-45"
             >
-              <img src={w.info.icon} alt="" width={28} height={28} className="rounded-md" />
+              {w.info.icon ? (
+                <img src={w.info.icon} alt="" width={28} height={28} className="rounded-md" />
+              ) : (
+                <span className="grid place-items-center w-7 h-7 rounded-md border border-line text-subtle">
+                  <Wallet size={14} />
+                </span>
+              )}
               <span className="text-sm font-semibold text-txt">{w.info.name}</span>
               <span className="ml-auto text-xs text-subtle">{w.info.rdns}</span>
             </button>
