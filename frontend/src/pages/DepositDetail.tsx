@@ -3,7 +3,7 @@
  *   - Active & đã mature  → Withdraw (principal + lãi)
  *   - Active & chưa mature → Early Withdraw (CẢNH BÁO mất lãi + penalty)
  *   - Partial / Top-up    → cần amount (+ approve riêng cho top-up)
- *   - Renew               → giữ plan cũ hoặc plan mới (enabled)
+ *   - Renew               → chọn plan từ dropdown (mặc định plan hiện tại; hover xem thông số)
  *   - Pause hoạt động     → Emergency Withdraw C5 nếu pause ≥ 7 ngày
  *   - có pending lãi NỢ (C1 defer) → Claim Pending
  * Mọi action có confirm (ConfirmDialog in-app) + map lỗi thân thiện.
@@ -19,6 +19,8 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";
 import { useTx } from "@/hooks/useTx";
+import { usePlans } from "@/hooks/usePlans";
+import RenewPlanSelect from "@/components/RenewPlanSelect";
 import { fmtToken, formatBps, fmtDate } from "@/lib/format";
 
 const SCALAR = 1_000_000n;
@@ -75,7 +77,6 @@ export default function DepositDetail() {
 
   const [inputAmount, setInputAmount] = useState("");
   const [renewPlan, setRenewPlan] = useState<number | null>(null);
-  const [customRenew, setCustomRenew] = useState(false);
 
   const amount = useMemo(() => {
     try {
@@ -86,6 +87,19 @@ export default function DepositDetail() {
   }, [inputAmount]);
 
   const pending = state.status === "pending";
+  const { plans, loading: plansLoading } = usePlans();
+
+  /* Mở deposit khác → reset lựa chọn plan (deposit id đổi sau renew → NFT mới) */
+  useEffect(() => {
+    setRenewPlan(null);
+  }, [depositId]);
+
+  /* Default plan cho Renew = plan hiện tại (nếu enabled), ngược lại plan enabled đầu tiên */
+  useEffect(() => {
+    if (renewPlan !== null || !d || plans.length === 0) return;
+    const current = plans.find((p) => p.id === Number(d.planId));
+    setRenewPlan(current && current.enabled ? current.id : (plans.find((p) => p.enabled)?.id ?? null));
+  }, [d, plans, renewPlan]);
 
   /* ── Fetch deposit + preview + vault pause status ── */
   useEffect(() => {
@@ -361,25 +375,15 @@ export default function DepositDetail() {
               </p>
             </div>
             <div>
-              <label htmlFor="renew-plan">Plan mới cho Renew (nếu muốn đổi)</label>
-              <div className="flex gap-2">
-                <input
-                  id="renew-plan"
-                  className="field"
-                  placeholder={customRenew ? "VD: 2" : "giữ plan hiện có"}
-                  disabled={!customRenew}
-                  onChange={(e) => setRenewPlan(e.target.value ? Number(e.target.value) : null)}
-                />
-                <button
-                  type="button"
-                  className="btn btn-outline !px-3 text-xs"
-                  aria-pressed={customRenew}
-                  aria-label="Đổi plan khi renew"
-                  onClick={() => setCustomRenew((s) => !s)}
-                >
-                  {customRenew ? "Tùy chọn" : "Giữ plan"}
-                </button>
-              </div>
+              <label htmlFor="renew-plan">Plan cho Renew</label>
+              <RenewPlanSelect
+                plans={plans}
+                currentPlanId={d !== null ? Number(d.planId) : 0}
+                value={renewPlan}
+                onChange={setRenewPlan}
+                disabled={pending}
+                plansLoading={plansLoading}
+              />
               <p className="text-xs text-subtle mt-1">Renew chỉ vào plan enabled — ngược lại revert SC_PlanNotEnabled.</p>
             </div>
           </div>
@@ -500,24 +504,34 @@ export default function DepositDetail() {
               <button
                 type="button"
                 className="btn btn-outline"
-                disabled={pending || (customRenew && renewPlan === null)}
-                title="Renew: nói lại ký hết kỳ — toàn bộ principal + lãi ghép thành 1 kỳ hạn mới (tenor/APR snapshot giữ nguyên nếu giữ plan)."
+                disabled={pending || renewPlan === null}
+                title="Renew: tái ký hết kỳ — toàn bộ principal + lãi ghép thành 1 kỳ hạn mới theo plan đã chọn."
                 onClick={async () => {
-                  const target = customRenew ? `plan #${renewPlan}` : "plan hiện có";
+                  if (renewPlan === null) return;
+                  const target = plans.find((p) => p.id === renewPlan) ?? null;
+                  const keep = renewPlan === Number(d.planId);
                   const ok = await confirm({
                     title: "Renew (tái gửi tiết kiệm)",
                     message: (
                       <>
                         Principal + lãi ghép chuyển thành kỳ hạn mới theo{" "}
-                        <strong>{target}</strong>. APR snapshot {formatBps(d.aprBpsAtOpen)} và tenor{" "}
-                        {Number(d.tenorDays)} ngày giữ nguyên. NFT nhận status AutoRenewed.
+                        <strong>{keep ? "plan hiện tại" : `Plan #${renewPlan}`}</strong>
+                        {target && !keep && (
+                          <>
+                            {" "}
+                            — APR <span className="num">{formatBps(target.aprBps)}</span>, kỳ hạn{" "}
+                            <span className="num">{Number(target.tenorDays)} ngày</span>, phạt rút sớm{" "}
+                            <span className="num text-warn">{formatBps(target.earlyWithdrawPenaltyBps)}</span>
+                          </>
+                        )}
+                        . NFT nhận status AutoRenewed.
                       </>
                     ),
                     okLabel: "Renew ngay",
                   });
                   if (ok) {
                     contractCall("Renew", async () =>
-                      (await signerC!.core.renewDeposit(depositId!, customRenew ? renewPlan! : d.planId)) as unknown as ContractTransactionResponse,
+                      (await signerC!.core.renewDeposit(depositId!, renewPlan ?? Number(d.planId))) as unknown as ContractTransactionResponse,
                     );
                   }
                 }}
