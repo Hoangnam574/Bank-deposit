@@ -89,9 +89,10 @@ export default function MyDeposits() {
         : true,
   );
 
+  /* scaleX cần phần 0..1 — chia 100 (cùng đơn vị với progress-fill ở DepositDetail) */
   const pct = (d: DepositRow): string => {
     const p = ((nowSec - Number(d.startAt)) / Math.max(1, Number(d.maturityAt) - Number(d.startAt))) * 100;
-    return Math.max(0, Math.min(100, p)).toFixed(3);
+    return (Math.max(0, Math.min(100, p)) / 100).toFixed(3);
   };
 
   return (
