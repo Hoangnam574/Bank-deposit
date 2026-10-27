@@ -14,6 +14,8 @@ import { ArrowLeft, AlertTriangle, Loader2, SearchX } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
+import MaturityRing from "@/components/MaturityRing";
+import InterestTicker from "@/components/InterestTicker";
 import NoDeploymentState from "@/components/NoDeploymentState";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
@@ -275,9 +277,40 @@ export default function DepositDetail() {
         <InfoBox label="Kỳ hạn" value={<span className="num">{`${Number(d.tenorDays)} ngày`}</span>} />
         <InfoBox
           label="Đáo hạn"
-          value={nowSec > 0 ? <Countdown targetSec={d.maturityAt} nowSec={nowSec} /> : <span className="num">{fmtDate(d.maturityAt)}</span>}
+          value={
+            nowSec > 0 ? (
+              <span className="flex items-center gap-2">
+                {Number(d.status) === ACTIVE && Number(d.maturityAt) > 0 && (
+                  <MaturityRing
+                    pct={tenurePct}
+                    matured={matured}
+                    center={matured ? "100%" : `${Math.floor(tenurePct)}%`}
+                  />
+                )}
+                <span className="text-sm">
+                  <Countdown targetSec={d.maturityAt} nowSec={nowSec} />
+                </span>
+              </span>
+            ) : (
+              <span className="num">{fmtDate(d.maturityAt)}</span>
+            )
+          }
         />
-        <InfoBox label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"} value={<span className="num text-ok">+{fmtToken(pv.interest, 4)}</span>} />
+        <InfoBox
+          label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"}
+          value={
+            Number(d.status) === 0 && !matured ? (
+              <InterestTicker
+                baseInterest={pv.interest}
+                principal={d.principal}
+                aprBps={d.aprBpsAtOpen}
+                ticking={!closed}
+              />
+            ) : (
+              <span className="num text-ok">+{fmtToken(pv.interest, 4)}</span>
+            )
+          }
+        />
         <InfoBox
           label="Phạt nếu rút sớm (rate)"
           value={

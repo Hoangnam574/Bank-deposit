@@ -10,6 +10,7 @@ import { Lock, Loader2 } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import NoDeploymentState from "@/components/NoDeploymentState";
+import VaultHealthGauge from "@/components/VaultHealthGauge";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";import { useTx } from "@/hooks/useTx";
 import { fmtToken, formatBps, parseToken as parseTokenInput } from "@/lib/format";
@@ -206,6 +207,19 @@ export default function Admin() {
               </div>
             </div>
           </section>
+
+          {/* ── Health gauge — solvency trực quan (khớp C2 VM_Insolvent) ─── */}
+          <div className="card mt-4">
+            <div className="flex items-baseline justify-between mb-2">
+              <h2 className="font-display text-sm tracking-wider text-subtle">
+                Solvency health
+              </h2>
+              {available !== null && available < 0n && (
+                <span className="text-xs text-err num">available &lt; 0 — trạng thái insolvent</span>
+              )}
+            </div>
+            <VaultHealthGauge balance={vaultBal} owed={owed} />
+          </div>
 
           <div className="card mt-4 text-sm flex flex-wrap items-center gap-3">
             <span>
