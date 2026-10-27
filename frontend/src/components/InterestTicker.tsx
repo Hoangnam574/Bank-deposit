@@ -1,11 +1,13 @@
 /**
  * InterestTicker (Nice-to-have C-B) — lãi tích luỹ nhảy theo giây.
  * Nguồn sự thật là `baseInterest` (pv.interest từ previewExit trên chain tại
- * thời điểm fetch). Ticker cộng dồn display-side theo rate/second:
- *   rate = principal × aprBps / (10_000 × SECONDS_PER_YEAR)
- * — cùng hệ số với previewInterestOnAmount (format.ts, D9 dust) nhưng dùng
- * accumulator float phía display để không bị bigint-truncate về 0 với
- * principal nhỏ (vd: 100 USDC @ 8% APR chỉ tạo ~0.25 units/giây).
+ * thời điểm fetch). Ticker cộng dồn display-side theo rate/second, cùng hệ số
+ * với previewInterestOnAmount (format.ts, D9 dust multiply-before-divide):
+ *   rate = principal × aprBps / (10_000 × SECONDS_PER_YEAR)   [units/giây]
+ * Rate tính bằng bigint quanta (×1e6 cổ phần) để không bị truncate về 0 với
+ * principal nhỏ (vd: 100 USDC @ 250bps chỉ tạo ~0.079 units/giây), rồi floor
+ * về nguyên units khi hiển thị — khớp semantics chia-đứng-trước của on-chain,
+ * không dùng float accumulator (tránh sai lệch đơn vị USDC ×1e6).
  */
 
 import { useEffect, useState } from "react";
@@ -31,14 +33,16 @@ export default function InterestTicker({ baseInterest, principal, aprBps, tickin
     return () => window.clearInterval(t);
   }, [ticking]);
 
-  /* Rate USDC/giây — float precision an toàn trong range USDC (~≤ 1e13 units) */
-  const rateUsdcPerSec = (Number(principal) * Number(aprBps)) / (10_000 * Number(SECONDS_PER_YEAR));
-  const rateUnits = BigInt(Math.round(rateUsdcPerSec * 1e6)); // về units bigint để fmtToken
+  /* Rate units/giây ở dải quanta ×1e6 — nguyên bigint, cùng công thức on-chain */
+  const QUANTA = 1_000_000n; // 10^6 phần quang cho mỗi nguyên unit
+  const rateQuantaPerSec =
+    (principal * aprBps * QUANTA) / (10_000n * SECONDS_PER_YEAR);
 
-  /* Giá trị hiển thị: base (chain) + rate × số giây trôi từ lúc fetch */
+  /* Giá trị hiển thị: base (chain) + rate × số giây trôi từ lúc fetch — floor
+     giống multiply-before-divide của previewInterestOnAmount (không làm tròn lên) */
   const accruedUnits =
-    baseInterest + (ticking ? rateUnits * BigInt(tick) : 0n);
-  const perDayUnits = rateUnits * 86_400n;
+    baseInterest + (ticking ? (rateQuantaPerSec * BigInt(tick)) / QUANTA : 0n);
+  const perDayUnits = (rateQuantaPerSec * 86_400n) / QUANTA;
 
   return (
     <span className="inline-flex flex-col">
