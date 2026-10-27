@@ -175,6 +175,36 @@ export default function DepositDetail() {
   const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
   const closed = d !== null && Number(d.status) !== ACTIVE;
 
+  /* ── Poll block mới: khi deposit Active chưa matured, block được ghi mới →
+        refetch pv + cập nhật nowSec — lãi hiển thị chỉ thay đổi theo block ── */
+  const interestLive = d !== null && Number(d.status) === ACTIVE && !matured;
+  useEffect(() => {
+    if (!contracts || !hasDeployment || !interestLive || depositId === null) return;
+    let cancelled = false;
+    let lastSeen = 0;
+    const t = window.setInterval(() => {
+      void (async () => {
+        try {
+          const block = await getBrowser()?.getBlock("latest");
+          if (!block || cancelled) return;
+          const ts = Number(block.timestamp);
+          if (lastSeen !== 0 && ts !== lastSeen) {
+            if (!cancelled) setNowSec(ts);
+            const px = (await contracts.core.previewExit(depositId)) as unknown[];
+            if (!cancelled) setPv((p) => (p ? { ...p, interest: px[1] as bigint } : p));
+          }
+          lastSeen = ts;
+        } catch {
+          /* lỗi poll lẻ — tick sau thử lại */
+        }
+      })();
+    }, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [contracts, hasDeployment, depositId, interestLive, getBrowser]);
+
   const contractCall = (
     label: string,
     call: () => Promise<ContractTransactionResponse>,
@@ -297,7 +327,7 @@ export default function DepositDetail() {
           }
         />
         <InfoBox
-          label={matured ? "Lãi tại maturity" : "Lãi tích luỹ tới hiện tại"}
+          label={matured ? "Lãi nhận khi rút đúng hạn" : "Lãi dự kiến khi đáo hạn"}
           value={
             Number(d.status) === 0 && !matured ? (
               <InterestTicker
@@ -307,7 +337,7 @@ export default function DepositDetail() {
                 ticking={!closed}
               />
             ) : (
-              <span className="num text-ok">+{fmtToken(pv.interest, 4)}</span>
+              <span className="num text-ok">{fmtToken(pv.interest, 4)} USDC</span>
             )
           }
         />

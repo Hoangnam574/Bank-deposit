@@ -82,7 +82,7 @@ Dùng `npm run timetravel` (băng thời gian hardhat local — KHÔNG chạy tr
 
 ### R4 · Confirm in-app + số liệu khớp preview — T11 + T5 (S7)
 
-1. Bấm "Rút sớm" → ConfirmDialog in-app (KHÔNG phải `window.confirm` trình duyệt) hiển thị: mất toàn bộ lãi tích luỹ + penalty (rate) ≈ số USDC + "Nhận ngay" — đối chiếu với dòng "Lãi tích luỹ tới hiện tại" trên cùng trang, phải khớp.
+1. Bấm "Rút sớm" → ConfirmDialog in-app (KHÔNG phải `window.confirm` trình duyệt) hiển thị: mất toàn bộ lãi dự kiến + penalty (rate) ≈ số USDC + "Nhận ngay" — đối chiếu với dòng "Lãi dự kiến khi đáo hạn" trên cùng trang, phải khớp.
 2. "Rút một phần" nhập 40/100 → confirm → sau tx số dư tăng đúng 40, deposit còn 60, maturity giữ nguyên (C3 weighted).
 3. "Top-up" +50 → bước 1 "1. Approve (50 USDC)" → bước 2 "Top-up" → principal hợp nhất, APR/tenor snapshot giữ nguyên.
 

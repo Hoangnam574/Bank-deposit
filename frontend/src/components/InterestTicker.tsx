@@ -1,58 +1,51 @@
 /**
- * InterestTicker (Nice-to-have C-B) — lãi tích luỹ nhảy theo giây.
- * Nguồn sự thật là `baseInterest` (pv.interest từ previewExit trên chain tại
- * thời điểm fetch). Ticker cộng dồn display-side theo rate/second, cùng hệ số
- * với previewInterestOnAmount (format.ts, D9 dust multiply-before-divide):
- *   rate = principal × aprBps / (10_000 × SECONDS_PER_YEAR)   [units/giây]
- * Rate tính bằng bigint quanta (×1e6 cổ phần) để không bị truncate về 0 với
- * principal nhỏ (vd: 100 USDC @ 250bps chỉ tạo ~0.079 units/giây), rồi floor
- * về nguyên units khi hiển thị — khớp semantics chia-đứng-trước của on-chain,
- * không dùng float accumulator (tránh sai lệch đơn vị USDC ×1e6).
+ * InterestTicker (Nice-to-have C-B) — "Lãi dự kiến khi đáo hạn".
+ *
+ * Nguồn sự thật: `baseInterest` = pv.interest (previewExit) — lãi contract
+ * sẽ trả khi rút ĐÚNG hạn (D9: principal × tenorSeconds × aprBps / (YEAR × 1e4)).
+ * Giá trị này là HẰNG SỐ tính từ lúc mở (không tăng theo block/giây): rút sớm
+ * nhận 0 lãi (chỉ principal − penalty), nên "lãi tích luỹ theo thời gian"
+ * KHÔNG TỒN TẠI trên chain — UI không tự mô phỏng con số đó.
+ * Giá trị chỉ thay đổi khi top-up (D4 subtract remaining) / renew đổi
+ * principalSeconds — tức sau một tx → block mới; DepositDetail poll
+ * blockNumber mỗi ~4s để refetch, nhờ đó số cập nhật theo block mà không
+ * phụ thuộc đồng hồ client.
+ *
+ * Cả hai dòng đều hiển thị ở đơn vị USDC:
+ *   dòng chính  = lãi dự kiến đáo hạn (USDC)
+ *   dòng phụ    = tốc độ ≈ X USDC/ngày (rate = principal×apr / (1e4×YEAR) / 86400)
+ * Rate dùng bigint quanta (×1e6) cùng hệ số previewInterestOnAmount
+ * (format.ts) — floor như multiply-before-divide, không float accumulator.
  */
 
-import { useEffect, useState } from "react";
 import { fmtToken, SECONDS_PER_YEAR } from "@/lib/format";
 
 interface Props {
-  /** Lãi đã tích luỹ tính tới thời điểm fetch (pv.interest — bigint units) */
+  /** Lãi dự kiến khi đáo hạn (pv.interest — bigint units, ×1e6 USDC) */
   baseInterest: bigint;
   /** Principal hiện tại của deposit (bigint units) */
   principal: bigint;
   /** APR snapshot tại thời điểm mở (bps) */
   aprBps: bigint;
-  /** true = deposit Active và chưa matured → tick; false = hiển thị tĩnh */
+  /** true = deposit Active và chưa matured → hiển thị dòng tốc độ/ngày */
   ticking: boolean;
 }
 
 export default function InterestTicker({ baseInterest, principal, aprBps, ticking }: Props) {
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!ticking) return;
-    const t = window.setInterval(() => setTick((x) => x + 1), 1000);
-    return () => window.clearInterval(t);
-  }, [ticking]);
-
   /* Rate units/giây ở dải quanta ×1e6 — nguyên bigint, cùng công thức on-chain */
-  const QUANTA = 1_000_000n; // 10^6 phần quang cho mỗi nguyên unit
+  const QUANTA = 1_000_000n; // 10^6 phần quanta cho mỗi nguyên unit
   const rateQuantaPerSec =
     (principal * aprBps * QUANTA) / (10_000n * SECONDS_PER_YEAR);
-
-  /* Giá trị hiển thị: base (chain) + rate × số giây trôi từ lúc fetch — floor
-     giống multiply-before-divide của previewInterestOnAmount (không làm tròn lên) */
-  const accruedUnits =
-    baseInterest + (ticking ? (rateQuantaPerSec * BigInt(tick)) / QUANTA : 0n);
   const perDayUnits = (rateQuantaPerSec * 86_400n) / QUANTA;
 
   return (
     <span className="inline-flex flex-col">
-      <span className="num text-lg text-ok" aria-live="off">
-        {ticking ? "+" : ""}
-        {fmtToken(accruedUnits, 6)}
+      <span className="num text-lg text-ok" aria-live="polite">
+        {fmtToken(baseInterest, 6)} USDC
       </span>
       {ticking && (
         <span className="text-[11px] text-subtle font-normal mt-0.5">
-          ≈ {fmtToken(perDayUnits, 4)} USDC/ngày · nhảy theo giây (display)
+          ≈ {fmtToken(perDayUnits, 4)} USDC/ngày
         </span>
       )}
     </span>
