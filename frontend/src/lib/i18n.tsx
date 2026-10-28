@@ -42,6 +42,7 @@ const VI = {
   "nav.extTitle": "Account ngoài (có thể không có ETH/USDC local)",
   "nav.mainAria": "Điều hướng chính",
   "nav.mainAriaMobile": "Điều hướng chính (mobile)",
+  "nav.menuAria": "Mở menu điều hướng và ngôn ngữ",
   "nav.langAria": "Ngôn ngữ",
 
   /* chain / network */
@@ -530,6 +531,7 @@ const EN: Record<TKey, string> = {
   "nav.extTitle": "External account (may have no local ETH/USDC)",
   "nav.mainAria": "Main navigation",
   "nav.mainAriaMobile": "Main navigation (mobile)",
+  "nav.menuAria": "Open navigation and language menu",
   "nav.langAria": "Language",
 
   "chain.unknown": "Unknown",

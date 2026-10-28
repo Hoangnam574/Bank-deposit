@@ -9,7 +9,7 @@
  */
 import { useEffect, useState, type ComponentType } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Landmark, Droplet, ShieldCheck, Home, PlusCircle, Wallet, Languages } from "lucide-react";
+import { Landmark, Droplet, ShieldCheck, Home, PlusCircle, Wallet, Languages, Menu, X, Check } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
@@ -35,6 +35,17 @@ export default function Navbar() {
   const { isAdmin } = useAdminRole();
   const { lang, setLang, t } = useLang();
   const [balance, setBalance] = useState<bigint | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  /* ESC đóng menu ☰ */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   /* USDC balance — refresh khi tx thành công (bank:tx-ok); vai trò admin dùng useAdminRole */
   useEffect(() => {
@@ -80,7 +91,7 @@ export default function Navbar() {
     <>
       {/* Nav v5 — flat full-width trên canvas (Binance top-nav): hairline dưới,
           logo block yellow đặc + icon ink. Mobile: header chỉ giữ logo + cụm ví. */}
-      <div className="sticky top-0 z-40 border-b border-line bg-bg">
+      <div className="sticky top-0 z-40 border-b border-line bg-bg relative">
         <header className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10">
           {/* ── DESKTOP ≥sm: một hàng như cũ ── */}
           <div className="hidden sm:flex items-center gap-x-2.5 flex-nowrap py-2.5">
@@ -93,7 +104,7 @@ export default function Navbar() {
               </span>
             </Link>
 
-            <nav aria-label={t("nav.mainAria")} className="flex items-center gap-1 flex-nowrap">
+            <nav aria-label={t("nav.mainAria")} className="hidden lg:flex items-center gap-1 flex-nowrap">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
@@ -127,9 +138,8 @@ export default function Navbar() {
               <button
                 type="button"
                 aria-label={t("nav.langAria")}
-                title={t("nav.langAria")}
                 onClick={() => setLang(lang === "vi" ? "en" : "vi")}
-                className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs inline-flex items-center gap-1 shrink-0"
+                className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs hidden lg:inline-flex items-center gap-1 shrink-0"
               >
                 <Languages size={14} /> {lang === "vi" ? "EN" : "VI"}
               </button>
@@ -146,24 +156,30 @@ export default function Navbar() {
                   type="button"
                   onClick={faucet}
                   disabled={state.status === "pending"}
-                  className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs inline-flex items-center gap-1 shrink-0"
+                  aria-label={t("nav.faucetAria")}
+                  className="btn btn-outline !py-1.5 !px-2 xl:!px-2.5 text-xs inline-flex items-center gap-1 shrink-0"
                 >
-                  <Droplet size={14} /> {t("nav.faucet")}
+                  <Droplet size={14} /> <span className="hidden xl:inline">{t("nav.faucet")}</span>
                 </button>
               )}
               {address ? (
                 <div className="flex items-center gap-2 whitespace-nowrap">
                   <span
                     className="num text-sm"
-                    title={demo
+                    aria-label={demo
                       ? t("nav.demoTitle", { i: demo.index, role: demo.role })
                       : t("nav.extTitle")}
                   >
                     {address.slice(0, 6)}…{address.slice(-4)}
                     {demo && <span className="text-xs text-subtle hidden xl:inline"> (#{demo.index})</span>}
                   </span>
-                  <button type="button" onClick={disconnect} className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs shrink-0">
-                    {t("nav.disconnect")}
+                  <button
+                    type="button"
+                    onClick={disconnect}
+                    aria-label={t("nav.disconnect")}
+                    className="btn btn-outline !py-1.5 !px-2 xl:!px-2.5 text-xs inline-flex items-center shrink-0"
+                  >
+                    <X size={13} /> <span className="hidden xl:inline">{t("nav.disconnect")}</span>
                   </button>
                 </div>
               ) : (
@@ -171,8 +187,68 @@ export default function Navbar() {
                   {connecting ? t("nav.connecting") : t("nav.connect")}
                 </button>
               )}
+              {/* ☰ menu — kiểu Binance: nav inline ẩn ở vùng hẹp (side panel MetaMask) →
+                  các mục điều hướng + ngôn ngữ gom về menu dropdown này */}
+              <button
+                type="button"
+                aria-label={t("nav.menuAria")}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((v) => !v)}
+                className="btn btn-cta !py-1.5 !px-2.5 hidden sm:inline-flex lg:hidden shrink-0 items-center"
+              >
+                {menuOpen ? <X size={16} /> : <Menu size={16} />}
+              </button>
             </div>
           </div>
+
+          {/* ── Dropdown ☰ — nav + ngôn ngữ (nằm trong sticky header, tự theo scroll) ── */}
+          {menuOpen && (
+            <>
+              {/* Backdrop trong suốt — click ngoài đóng; z-30 dưới header (z-40) */}
+              <div className="fixed inset-0 z-30 hidden sm:block" onClick={() => setMenuOpen(false)} />
+              <div
+                role="menu"
+                aria-label={t("nav.mainAria")}
+                className="absolute right-4 sm:right-6 top-full w-60 !rounded-lg border border-line bg-bg shadow-xl py-1.5 z-50"
+              >
+                {navItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === "/"}
+                    onClick={() => setMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer transition-colors duration-150 ${
+                        isActive ? "text-primary bg-primary/10 font-semibold" : "text-subtle hover:text-txt hover:bg-panel"
+                      }`
+                    }
+                  >
+                    <item.icon size={17} />
+                    {t(item.key)}
+                  </NavLink>
+                ))}
+                <div className="my-1.5 border-t border-line" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { setLang("vi"); setMenuOpen(false); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors duration-150 hover:bg-panel"
+                >
+                  <span className={lang === "vi" ? "text-primary font-semibold" : "text-subtle"}>Tiếng Việt</span>
+                  {lang === "vi" && <Check size={15} className="text-primary" />}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { setLang("en"); setMenuOpen(false); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors duration-150 hover:bg-panel"
+                >
+                  <span className={lang === "en" ? "text-primary font-semibold" : "text-subtle"}>English</span>
+                  {lang === "en" && <Check size={15} className="text-primary" />}
+                </button>
+              </div>
+            </>
+          )}
 
           {/* ── MOBILE <sm: header gọn — logo + chain pill compact + faucet + ví ── */}
           <div className="flex sm:hidden items-center justify-between gap-1.5 py-2">
@@ -210,7 +286,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={disconnect}
-                  title={t("nav.disconnectTitle", { addr: address })}
+                  aria-label={t("nav.disconnect")}
                   className="btn btn-outline !px-2 !py-1.5 text-xs shrink-0"
                 >
                   {address.slice(0, 5)}…{address.slice(-3)}

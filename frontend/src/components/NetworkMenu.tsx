@@ -30,7 +30,6 @@ export default function NetworkMenu({ compact }: { compact?: boolean }) {
     <>
       <button
         type="button"
-        title={t("chain.pillHint")}
         aria-label={t("chain.pillAria")}
         onClick={() => setOpen(true)}
         className="cursor-pointer rounded-full hover:outline hover:outline-1 hover:outline-primary/50"
