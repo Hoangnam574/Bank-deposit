@@ -300,60 +300,60 @@ export default function Admin() {
             </div>
 
             {isOwner && (
-              <div className="card mt-4 max-w-2xl">
-                <h3 className="font-display mb-3">Tạo plan mới</h3>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <Field label="Tenor (ngày)" value={fTenor} onChange={setFTenor} placeholder="180" />
-                  <Field label="APR (bps)" value={fApr} onChange={setFApr} placeholder="300" />
-                  <Field label="Penalty (bps)" value={fPenalty} onChange={setFPenalty} placeholder="450" />
-                  <Field label="Min deposit (USDC)" value={fMin} onChange={setFMin} placeholder="100" />
-                  <Field label="Max deposit (USDC)" value={fMax} onChange={setFMax} placeholder="50000" />
+              <div className="grid gap-4 mt-4 lg:grid-cols-2 items-start">
+                <div className="card">
+                  <h3 className="font-display mb-3">Tạo plan mới</h3>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <Field label="Tenor (ngày)" value={fTenor} onChange={setFTenor} placeholder="180" />
+                    <Field label="APR (bps)" value={fApr} onChange={setFApr} placeholder="300" />
+                    <Field label="Penalty (bps)" value={fPenalty} onChange={setFPenalty} placeholder="450" />
+                    <Field label="Min deposit (USDC)" value={fMin} onChange={setFMin} placeholder="100" />
+                    <Field label="Max deposit (USDC)" value={fMax} onChange={setFMax} placeholder="50000" />
+                  </div>
+                  <button type="button" className="btn btn-cta mt-3" disabled={pending} onClick={createPlan}>
+                    Tạo plan
+                  </button>
                 </div>
-                <button type="button" className="btn btn-cta mt-3" disabled={pending} onClick={createPlan}>
-                  Tạo plan
-                </button>
+
+                {/* Vault funding — đặt cạnh card Tạo plan (2 cột từ lg) */}
+                <section className="card">
+                  <h2 className="font-display mb-1">Nạp / Rút vault</h2>
+                  <p className="text-xs text-subtle mb-3">
+                    Fund: approve + fundVault (2 tx). Withdraw: rút phần available — không thể rút dưới owed (C2 solvency).
+                  </p>
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div>
+                      <label htmlFor="vault-amount">Số USDC</label>
+                      <input
+                        id="vault-amount"
+                        className="field !w-56"
+                        inputMode="decimal"
+                        placeholder="VD: 100000"
+                        value={vaultAmount}
+                        onChange={(e) => setVaultAmount(e.target.value)}
+                      />
+                    </div>
+                    <button type="button" className="btn btn-cta" disabled={pending || !vaultAmount} onClick={fundVault}>
+                      {pending && <Loader2 size={15} className="animate-spin inline mr-1" />} Nạp vault
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      disabled={pending || !vaultAmount}
+                      onClick={() => (available !== null && parseTokenInput(vaultAmount) <= available ? withdrawVault() : undefined)}
+                    >
+                      Rút vault
+                    </button>
+                  </div>
+                  {available !== null && vaultAmount && parseTokenInput(vaultAmount) > available && (
+                    <p className="text-xs text-err mt-2" role="alert">
+                      Chỉ rút được tối đa {fmtToken(available)} USDC (C2: không vượt available).
+                    </p>
+                  )}
+                </section>
               </div>
             )}
           </section>
-
-          {/* ── Vault funding ─── */}
-          {isOwner && (
-            <section className="card mt-8 max-w-2xl">
-              <h2 className="font-display mb-1">Nạp / Rút vault</h2>
-              <p className="text-xs text-subtle mb-3">
-                Fund: approve + fundVault (2 tx). Withdraw: rút phần available — không thể rút dưới owed (C2 solvency).
-              </p>
-              <div className="flex flex-wrap gap-3 items-end">
-                <div>
-                  <label htmlFor="vault-amount">Số USDC</label>
-                  <input
-                    id="vault-amount"
-                    className="field !w-56"
-                    inputMode="decimal"
-                    placeholder="VD: 100000"
-                    value={vaultAmount}
-                    onChange={(e) => setVaultAmount(e.target.value)}
-                  />
-                </div>
-                <button type="button" className="btn btn-cta" disabled={pending || !vaultAmount} onClick={fundVault}>
-                  {pending && <Loader2 size={15} className="animate-spin inline mr-1" />} Nạp vault
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  disabled={pending || !vaultAmount}
-                  onClick={() => (available !== null && parseTokenInput(vaultAmount) <= available ? withdrawVault() : undefined)}
-                >
-                  Rút vault
-                </button>
-              </div>
-              {available !== null && vaultAmount && parseTokenInput(vaultAmount) > available && (
-                <p className="text-xs text-err mt-2" role="alert">
-                  Chỉ rút được tối đa {fmtToken(available)} USDC (C2: không vượt available).
-                </p>
-              )}
-            </section>
-          )}
         </>
       )}
 
