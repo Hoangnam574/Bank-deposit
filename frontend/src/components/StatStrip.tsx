@@ -8,6 +8,7 @@ import { useWallet } from "@/providers/WalletProvider";
 import { useContracts } from "@/providers/ContractsProvider";
 import { useWalletStats } from "@/hooks/useWalletStats";
 import { fmtToken } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 
 function Tile({
   icon,
@@ -38,6 +39,7 @@ export default function StatStrip() {
   const { address } = useWallet();
   const { contracts, hasDeployment } = useContracts();
   const stats = useWalletStats();
+  const { t } = useLang();
 
   if (!address || !contracts || !hasDeployment) return null;
 
@@ -46,31 +48,31 @@ export default function StatStrip() {
       <div className="card !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 sm:divide-x sm:divide-line">
         <Tile
           icon={<Coins size={14} />}
-          label="USDC khả dụng"
+          label={t("stat.usdc")}
           value={stats.usdcBalance !== null ? `${fmtToken(stats.usdcBalance, 2)}` : "…"}
         />
         <Tile
           icon={<PiggyBank size={14} />}
-          label="Deposits Active"
+          label={t("stat.active")}
           value={stats.activeCount !== null ? String(stats.activeCount) : "…"}
         />
         <Tile
           icon={<Wallet size={14} />}
-          label="Đang gửi (principal)"
+          label={t("stat.principal")}
           value={stats.totalPrincipal !== null ? `${fmtToken(stats.totalPrincipal, 2)}` : "…"}
         />
         {stats.isAdmin && (
           <Tile
             icon={<Vault size={14} />}
-            label="Vault available (admin)"
+            label={t("stat.vault")}
             value={stats.vaultAvailable !== null ? `${fmtToken(stats.vaultAvailable, 2)}` : "…"}
             accent
           />
         )}
         <button
           type="button"
-          aria-label="Làm mới số liệu"
-          title="Làm mới số liệu"
+          aria-label={t("stat.refresh")}
+          title={t("stat.refresh")}
           onClick={stats.refresh}
           className="self-center ml-auto text-subtle hover:text-txt cursor-pointer p-1.5 transition-colors duration-200"
         >

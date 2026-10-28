@@ -5,6 +5,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { CheckCircle2, XCircle, Loader2, Info, X } from "lucide-react";
 import { shortAddress } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 
 export type ToastKind = "success" | "error" | "info" | "pending";
 
@@ -78,6 +79,7 @@ const ICON = {
 } as const;
 
 function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+  const { t } = useLang();
   // Auto-dismiss sau 4.5s nếu không sticky (error thường để user đọc lâu hơn)
   useEffect(() => {
     if (toast.sticky) return;
@@ -103,12 +105,12 @@ function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: () => void })
             rel="noreferrer"
             className="text-xs underline text-secondary hover:text-primary cursor-pointer"
           >
-            Xem trên explorer ↗
+            {t("toast.explorer")}
           </a>
         )}
         {toast.hash && !link && <div className="text-xs text-subtle">{shortAddress(toast.hash)}</div>}
       </div>
-      <button type="button" onClick={onDismiss} aria-label="Đóng thông báo" className="cursor-pointer">
+      <button type="button" onClick={onDismiss} aria-label={t("toast.closeAria")} className="cursor-pointer">
         <X className="text-subtle hover:text-txt cursor-pointer" size={18} />
       </button>
     </div>

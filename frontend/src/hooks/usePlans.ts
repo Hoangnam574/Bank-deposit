@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useContracts } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";
 import type { PlanRow } from "@/components/PlanCard";
+import { rawT } from "@/lib/i18n";
 
 export function usePlans() {
   const { contracts, hasDeployment } = useContracts();
@@ -43,7 +44,7 @@ export function usePlans() {
         }
         if (!cancelled) setPlans(rows);
       } catch (e: unknown) {
-        if (!cancelled) setError("Không đọc được plans — kiểm tra network & deployment");
+        if (!cancelled) setError(rawT("plans.error"));
       } finally {
         if (!cancelled) setLoading(false);
       }

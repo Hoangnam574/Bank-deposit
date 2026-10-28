@@ -19,6 +19,7 @@
  */
 
 import { fmtToken, SECONDS_PER_YEAR } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 
 interface Props {
   /** Lãi dự kiến khi đáo hạn (pv.interest — bigint units, ×1e6 USDC) */
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function InterestTicker({ baseInterest, principal, aprBps, ticking }: Props) {
+  const { t } = useLang();
   /* Rate units/giây ở dải quanta ×1e6 — nguyên bigint, cùng công thức on-chain */
   const QUANTA = 1_000_000n; // 10^6 phần quanta cho mỗi nguyên unit
   const rateQuantaPerSec =
@@ -45,7 +47,7 @@ export default function InterestTicker({ baseInterest, principal, aprBps, tickin
       </span>
       {ticking && (
         <span className="text-[11px] text-subtle font-normal mt-0.5">
-          ≈ {fmtToken(perDayUnits, 4)} USDC/ngày
+          ≈ {fmtToken(perDayUnits, 4)} {t("ticker.perDay")}
         </span>
       )}
     </span>

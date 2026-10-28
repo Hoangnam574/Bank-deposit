@@ -19,6 +19,7 @@ import { useContracts } from "@/providers/ContractsProvider";
 import { usePlans } from "@/hooks/usePlans";
 import { useWallet } from "@/providers/WalletProvider";
 import { fmtToken, formatBps, fmtDate } from "@/lib/format";
+import { useLang, type TKey } from "@/lib/i18n";
 
 export const STATUS_ACTIVE = 0;
 
@@ -56,18 +57,19 @@ interface HistoryRow {
   ts?: number;
 }
 
-const KIND_META: Record<HistoryRow["kind"], { label: string; cls: string }> = {
-  maturity: { label: "Rút đúng hạn", cls: "border-ok/40 bg-ok/10 text-ok" },
-  early: { label: "Rút sớm", cls: "border-warn/40 bg-warn/10 text-warn" },
-  partial: { label: "Rút một phần", cls: "border-secondary/40 bg-secondary/10 text-secondary" },
-  emergency: { label: "Emergency (C5)", cls: "border-err/40 bg-err/10 text-err" },
-  renewed: { label: "Renew (tái ký)", cls: "border-line bg-panel text-subtle" },
+const KIND_META: Record<HistoryRow["kind"], { key: TKey; cls: string }> = {
+  maturity: { key: "dep.kind.maturity", cls: "border-ok/40 bg-ok/10 text-ok" },
+  early: { key: "dep.kind.early", cls: "border-warn/40 bg-warn/10 text-warn" },
+  partial: { key: "dep.kind.partial", cls: "border-secondary/40 bg-secondary/10 text-secondary" },
+  emergency: { key: "dep.kind.emergency", cls: "border-err/40 bg-err/10 text-err" },
+  renewed: { key: "dep.kind.renewed", cls: "border-line bg-panel text-subtle" },
 };
 
 export default function MyDeposits() {
   const { contracts, hasDeployment } = useContracts();
   const { address, getBrowser, chainId } = useWallet();
   const { plans: planRows } = usePlans();
+  const { t } = useLang();
   const [rows, setRows] = useState<DepositRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -232,7 +234,7 @@ export default function MyDeposits() {
           /* lịch sử lỗi (RPC giới hạn) — không phá danh sách active */
         }
       } catch {
-        if (!cancelled) setError("Đọc deposits lỗi — deploy/seed trước và connect ví đúng mạng");
+        if (!cancelled) setError(t("dep.loadError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -267,36 +269,36 @@ export default function MyDeposits() {
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
       <div className="flex flex-wrap items-center justify-between gap-3 mt-8 mb-6">
         <div>
-          <span className="eyebrow">NFT receipts</span>
-          <h1 className="mt-3 text-4xl font-bold font-display tracking-tight">Sổ tiết kiệm</h1>
+          <span className="eyebrow">{t("dep.eyebrow")}</span>
+          <h1 className="mt-3 text-4xl font-bold font-display tracking-tight">{t("dep.title")}</h1>
         </div>
         <Link to="/open" className="btn btn-cta inline-flex items-center gap-1 self-end">
-          Mới <ArrowRight size={15} />
+          {t("dep.new")} <ArrowRight size={15} />
         </Link>
       </div>
 
-      {!contracts && <NoDeploymentState page="Sổ tiết kiệm" />}
+      {!contracts && <NoDeploymentState page={t("dep.page")} />}
       {contracts && error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
       {contracts && loading && rows.length === 0 && <SkeletonRows count={2} />}
       {contracts && !loading && !error && rows.length === 0 && history.length === 0 && (
         <div className="card text-center py-12 border-dashed !border-line">
           <Inbox className="mx-auto text-subtle" size={42} aria-hidden />
-          <p className="mt-3 text-subtle">Bạn chưa có deposit nào</p>
+          <p className="mt-3 text-subtle">{t("dep.empty")}</p>
           <Link to="/open" className="btn btn-cta mt-4 inline-block cursor-pointer">
-            Mở tiết kiệm đầu tiên
+            {t("dep.emptyCta")}
           </Link>
         </div>
       )}
 
       {contracts && rows.length > 0 && (
         <>
-          {/* Bộ lọc — segmented buttons aria-pressed (bỏ role=tablist thiếu tabpanel) */}
-          <div className="flex gap-2 mb-4 text-sm" aria-label="Lọc deposit">
+          {/* Bộ lọc — segmented buttons aria-pressed */}
+          <div className="flex gap-2 mb-4 text-sm" aria-label={t("dep.filterAria")}>
             {(
               [
-                ["all", "Tất cả"],
-                ["active", "Đang hoạt động"],
-                ["closed", "Đã đóng"],
+                ["all", t("dep.filterAll")],
+                ["active", t("dep.filterActive")],
+                ["closed", t("dep.filterClosed")],
               ] as const
             ).map(([v, label]) => (
               <button
@@ -341,8 +343,8 @@ export default function MyDeposits() {
                 </div>
                 <div className="num mt-2 text-sm flex gap-4 text-subtle">
                   <span className="text-primary">{formatBps(d.aprBpsAtOpen)} APR</span>
-                  <span>{Number(d.tenorDays)} ngày</span>
-                  <span className="text-warn">Phạt {formatBps(d.penaltyBpsAtOpen)}</span>
+                  <span>{t("detail.days", { d: Number(d.tenorDays) })}</span>
+                  <span className="text-warn">{t("plan.penalty")} {formatBps(d.penaltyBpsAtOpen)}</span>
                 </div>
               </Link>
             ))}
@@ -352,17 +354,15 @@ export default function MyDeposits() {
 
       {/* ── Lịch sử các sổ đã tất toán (từ event log — NFT đã burn) ── */}
       {contracts && history.length > 0 && (
-        <section className="mt-10" aria-label="Lịch sử tất toán">
+        <section className="mt-10" aria-label={t("dep.historyAria")}>
           <div className="flex items-center gap-2">
             <History size={15} className="text-subtle" aria-hidden />
-            <span className="eyebrow">Lịch sử — sổ đã tất toán</span>
+            <span className="eyebrow">{t("dep.historyEyebrow")}</span>
           </div>
 
           {/* Hết active mà còn lịch sử → nhắc nhẹ thay vì trang trống rỗng */}
           {!hasActive && !loading && (
-            <p className="text-sm text-subtle mt-3">
-              Không có sổ đang chạy — các sổ trước đây của bạn nằm bên dưới.
-            </p>
+            <p className="text-sm text-subtle mt-3">{t("dep.noActive")}</p>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2 mt-3">
@@ -380,22 +380,22 @@ export default function MyDeposits() {
                   <div className="flex items-center justify-between">
                     <div className="eyebrow">Deposit #{h.id}</div>
                     <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${meta.cls}`}>
-                      {meta.label}
+                      {t(meta.key)}
                     </span>
                   </div>
                   <div className="num mt-2 text-2xl font-display text-txt">{fmtToken(h.amount)} USDC</div>
                   <div className="text-xs text-subtle mt-2.5">
                     {h.stillActive
-                      ? "Rút một phần — sổ vẫn đang chạy"
+                      ? t("dep.partialNote")
                       : h.kind === "renewed" && h.newId
-                        ? `Tái ký thành sổ mới #${h.newId}`
+                        ? t("dep.renewedNote", { id: h.newId })
                         : h.ts
-                          ? `Đóng lúc ${fmtDate(h.ts)}`
-                          : `Block ${h.blockNumber}`}
+                          ? t("dep.closedAt", { date: fmtDate(h.ts) })
+                          : t("dep.blockNote", { n: h.blockNumber })}
                   </div>
                   <div className="num mt-2 text-sm flex flex-wrap gap-x-4 gap-y-1 text-subtle">
                     {h.apr !== undefined && <span className="text-primary">{formatBps(h.apr)} APR</span>}
-                    {tenor !== undefined && <span>{Number(tenor.tenorDays)} ngày</span>}
+                    {tenor !== undefined && <span>{t("detail.days", { d: Number(tenor.tenorDays) })}</span>}
                     {h.interest > 0n && <span className="text-ok">+{fmtToken(h.interest, 4)} USDC</span>}
                     {h.penalty > 0n && <span className="text-err">−{fmtToken(h.penalty, 2)} USDC</span>}
                   </div>

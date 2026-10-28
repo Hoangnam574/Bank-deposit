@@ -20,6 +20,7 @@ import {
 } from "react";
 import { BrowserProvider, type Eip1193Provider } from "ethers";
 import { hexToChainId } from "@/lib/format";
+import { rawT } from "@/lib/i18n";
 
 /** ABI chuẩn của `window.ethereum` dùng phần nhỏ thui */
 interface Eip1193 extends Eip1193Provider {
@@ -179,7 +180,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
          (Đừng tự connect lặng lẽ: user muốn chủ động chọn.) */
       const hasAny = entriesRef.current.length > 0 || Boolean(getInjected());
       if (!hasAny) {
-        setError("Chưa cài ví (MetaMask/Rabby…) — cài rồi thử lại");
+        setError(rawT("wallet.notInstalled"));
         return null;
       }
       setPickOpen(true);
@@ -197,7 +198,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       return null;
     } catch {
-      setError("Connect bị từ chối — mở ví và thử lại");
+      setError(rawT("wallet.rejected"));
       return null;
     } finally {
       setConnecting(false);
@@ -251,7 +252,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const list = [...entries];
     if (injected && !list.some((w) => w.provider === injected)) {
       list.push({
-        info: { uuid: "injected-fallback", name: "MetaMask (ví mặc định của trang)", icon: "", rdns: "window.ethereum" },
+        info: { uuid: "injected-fallback", name: rawT("wallet.defaultInjected"), icon: "", rdns: "window.ethereum" },
         provider: injected,
       });
     }

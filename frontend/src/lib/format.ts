@@ -1,7 +1,9 @@
 /**
- * lib/format.ts — format tiền (USDC 6 decimals — KHÔNG 1e18, D-1 của đề),
- * thời gian đáo hạn, và mapping custom error → message thân thiện (T6.6/T6.13).
+ * lib/format.ts — format tiền (USDC 6 decimals — KHÔNG 1e18),
+ * thời gian đáo hạn, và mapping custom error → message thân thiện.
+ * Chuỗi UI lấy từ i18n (rawT) — logic số/thời gian giữ nguyên.
  */
+import { rawT, getLang, type TKey } from "@/lib/i18n";
 
 /* ───────────────────────── Rough xc token config ───────────── */
 export const DECIMALS = 6;
@@ -24,9 +26,9 @@ export function fmtToken(units: bigint, maxDp = 6): string {
 
 /** Lượng → bigint với tối đa 6 decimals — dùng khi user nhập */
 export function parseToken(input: string): bigint {
-  if (!/^[0-9]+(\.[0-9]+)?$/.test(input)) throw new Error("Số tiền không hợp lệ");
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(input)) throw new Error(rawT("err.amountInvalid"));
   const [intPart, fracPart = ""] = input.split(".");
-  if (fracPart.length > DECIMALS) throw new Error(`Tối đa ${DECIMALS} chữ số thập phân`);
+  if (fracPart.length > DECIMALS) throw new Error(rawT("err.decimals", { n: DECIMALS }));
   const fracPadded = fracPart.padEnd(DECIMALS, "0").slice(0, DECIMALS);
   return BigInt(intPart || "0") * SCALAR + BigInt(fracPadded || "0");
 }
@@ -46,7 +48,7 @@ export function formatBps(bps: number | bigint): string {
 /* ───────────────────── Thời gian + đếm ngược ─────────────── */
 export function fmtDate(unixSeconds: number | bigint): string {
   const ts = Number(unixSeconds) * 1000;
-  return new Date(ts).toLocaleString("vi-VN", {
+  return new Date(ts).toLocaleString(getLang() === "en" ? "en-US" : "vi-VN", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -55,17 +57,17 @@ export function fmtDate(unixSeconds: number | bigint): string {
   });
 }
 
-/** Đếm ngược dạng "3g 7p 12s"; nếu passed thì "Hết hạn" hoặc "Quá hạn" */
+/** Đếm ngược dạng "3 ngày 7 giờ"; nếu passed thì "Hết hạn" (theo ngôn ngữ hiện tại) */
 export function fmtCountdown(targetSec: number | bigint, nowSec: number): string {
   const delta = Number(targetSec) - nowSec;
-  if (delta <= 0) return "Hết hạn";
+  if (delta <= 0) return rawT("countdown.expired");
   const d = Math.floor(delta / 86_400);
   const h = Math.floor((delta % 86_400) / 3600);
   const m = Math.floor((delta % 3600) / 60);
   const s = delta % 60;
-  if (d > 0) return `${d} ngày ${h} giờ`;
-  if (h > 0) return `${h} giờ ${m} phút`;
-  return `${m} phút ${s} giây`;
+  if (d > 0) return rawT("countdown.dh", { d, h });
+  if (h > 0) return rawT("countdown.hm", { h, m });
+  return rawT("countdown.ms", { m, s });
 }
 
 /** Địa chỉ rút gọn 0x12ab…cdef */
@@ -83,28 +85,28 @@ export function hexToChainId(hexLike: string | null | undefined): number | null 
   }
 }
 
-/* ───────────────── Custom error → thứ user hiểu (T6.6) ─────────────── */
-const ERRORS: Record<string, string> = {
-  VM_ZeroAmount: "Số lượng phải > 0",
-  VM_ZeroAddress: "Địa chỉ không hợp lệ (0x0)",
-  VM_InsufficientBalance: "Vault không đủ USDC để trả lãi — thử lại sau",
-  VM_Insolvent: "Rút sẽ làm vault thiếu tiền cam kết cho deposit đang Active",
-  VM_NotSavingCore: "Chỉ SavingCore được gọi hàm này",
-  SC_UnknownPlan: "Plan không tồn tại",
-  SC_PlanNotEnabled: "Plan này tạm ngưng — không thể mở/renew vào plan",
-  SC_InvalidPlan: "Tham số plan không hợp lệ",
-  SC_AmountOutOfRange: "Số tiền ngoài khoảng min/max của plan",
-  SC_DepositUnknown: "Deposit không tồn tại",
-  SC_DepositNotOwner: "Bạn không phải chủ deposit này",
-  SC_DepositNotActive: "Deposit đã đóng (rút/renew rồi)",
-  SC_TooEarly: "Chưa tới hạn rút — chờ tới maturity, bot sẽ tự động renew nếu bạn bỏ qua",
-  SC_TooLate: "Deposit đã quá grace period — bot cần time để auto-renew, rút sẽ tự động",
-  SC_InvalidTopUpAmount: "Số top-up không hợp lệ",
-  SC_InvalidPartialAmount: "Số rút một phần không hợp lệ — phải thấp hơn tổng principal",
-  SC_MaxPrincipalExceeded: "Tổng principal vượt MAX_PRINCIPAL của hợp đồng",
-  SC_EmergencyLocked: "Pause mới < 7 ngày — chưa được rút khẩn cấp",
-  SC_NothingPending: "Không có lãi nào pending để claim",
-  ERC20: "Token transfer bị lỗi — check allowance",
+/* ───────────────── Custom error → thứ user hiểu ─────────────── */
+const ERROR_KEYS: Record<string, TKey> = {
+  VM_ZeroAmount: "err.VM_ZeroAmount",
+  VM_ZeroAddress: "err.VM_ZeroAddress",
+  VM_InsufficientBalance: "err.VM_InsufficientBalance",
+  VM_Insolvent: "err.VM_Insolvent",
+  VM_NotSavingCore: "err.VM_NotSavingCore",
+  SC_UnknownPlan: "err.SC_UnknownPlan",
+  SC_PlanNotEnabled: "err.SC_PlanNotEnabled",
+  SC_InvalidPlan: "err.SC_InvalidPlan",
+  SC_AmountOutOfRange: "err.SC_AmountOutOfRange",
+  SC_DepositUnknown: "err.SC_DepositUnknown",
+  SC_DepositNotOwner: "err.SC_DepositNotOwner",
+  SC_DepositNotActive: "err.SC_DepositNotActive",
+  SC_TooEarly: "err.SC_TooEarly",
+  SC_TooLate: "err.SC_TooLate",
+  SC_InvalidTopUpAmount: "err.SC_InvalidTopUpAmount",
+  SC_InvalidPartialAmount: "err.SC_InvalidPartialAmount",
+  SC_MaxPrincipalExceeded: "err.SC_MaxPrincipalExceeded",
+  SC_EmergencyLocked: "err.SC_EmergencyLocked",
+  SC_NothingPending: "err.SC_NothingPending",
+  ERC20: "err.ERC20",
 };
 
 /** Trích message thân thiện từ revert / reject MetaMask */
@@ -113,8 +115,14 @@ export function mapContractError(err: unknown): string | null {
   const any = err as { info?: { error?: { message?: string } }; message?: string; reason?: string; shortMessage?: string };
   const text = any.info?.error?.message ?? any.shortMessage ?? any.message ?? "";
   const customName = text.match(/\b((?:SC|VM|ERC20)_[A-Za-z]+)\b/);
-  if (customName && customName[1]) return ERRORS[customName[1]] ?? customName[1];
-  if (/user rejected/i.test(text)) return "Bạn đã từ chối giao dịch trong ví";
-  if (any.reason) return ERRORS[any.reason] ?? any.reason;
+  if (customName && customName[1]) {
+    const key = ERROR_KEYS[customName[1]];
+    return key ? rawT(key) : customName[1];
+  }
+  if (/user rejected/i.test(text)) return rawT("err.userRejected");
+  if (any.reason) {
+    const key = ERROR_KEYS[any.reason];
+    return key ? rawT(key) : any.reason;
+  }
   return null;
 }

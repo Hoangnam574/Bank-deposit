@@ -15,6 +15,7 @@ import { useContracts, useSignerContracts } from "@/providers/ContractsProvider"
 import { useWallet } from "@/providers/WalletProvider";import { useTx } from "@/hooks/useTx";
 import { fmtToken, formatBps, parseToken as parseTokenInput } from "@/lib/format";
 import type { PlanRow } from "@/components/PlanCard";
+import { useLang } from "@/lib/i18n";
 
 const EMERGENCY_DELAY_SECONDS = 7 * 86_400;
 
@@ -23,6 +24,7 @@ export default function Admin() {
   const signerC = useSignerContracts();
   const { address, hasWallet, getBrowser } = useWallet();
   const { state, run } = useTx();
+  const { t } = useLang();
 
   const [owner, setOwner] = useState<string | null>(null);
   const [plans, setPlans] = useState<PlanRow[]>([]);
@@ -101,58 +103,57 @@ export default function Admin() {
   };
 
   const createPlan = () => {
-    call("Tạo plan", async (c) => {
+    call(t("admin.txCreate"), async (c) => {
       const tenor = Number(fTenor);
       const apr = Number(fApr);
       const min = fMin ? parseTokenInput(fMin) : 0n;
       const max = fMax ? parseTokenInput(fMax) : 0n;
       const penalty = Number(fPenalty || "0");
-      if (!tenor || !apr) throw new Error("Thiếu tenor/APR");
+      if (!tenor || !apr) throw new Error(t("admin.txMissingTenorApr"));
       return c.core.createPlan(tenor, apr, min, max, penalty);
     });
   };
 
   const updateApr = (planId: number) => {
-    call("Update APR", async (c) => c.core.updatePlan(planId, Number(newApr.value)));
+    call(t("admin.txUpdateApr"), async (c) => c.core.updatePlan(planId, Number(newApr.value)));
   };
 
   const togglePlan = (planId: number, nextEnabled: boolean) => {
-    call(nextEnabled ? "Enable plan" : "Disable plan", async (c) =>
+    call(nextEnabled ? t("admin.txEnable") : t("admin.txDisable"), async (c) =>
       c.core.setPlanEnabled(planId, nextEnabled),
     );
   };
 
   const fundVault = () => {
-    call("Fund vault", async (c) => {
+    call(t("admin.txFund"), async (c) => {
       const amt = parseTokenInput(vaultAmount);
-      if (amt <= 0n) throw new Error("Số amount phải > 0");
+      if (amt <= 0n) throw new Error(t("admin.txNoAmount"));
       await c.usdc.approve(c.vault.target, amt); // approve trước (2 tx tất nhiên — chạy trong prompt 2 giao dịch)
       return c.vault.fundVault(amt);
     });
   };
 
   const withdrawVault = () => {
-    call("Withdraw vault (residual surplus)", async (c) => c.vault.withdrawVault(parseTokenInput(vaultAmount)));
+    call(t("admin.txWithdraw"), async (c) => c.vault.withdrawVault(parseTokenInput(vaultAmount)));
   };
 
   const pauseToggle = (nextPause: boolean) => {
-    call(nextPause ? "Pause hệ thống" : "Unpause", async (c) => (nextPause ? c.vault.pause() : c.vault.unpause()));
+    call(nextPause ? t("admin.txPause") : t("admin.txUnpause"), async (c) => (nextPause ? c.vault.pause() : c.vault.unpause()));
   };
 
   if (!hasWallet) {
     return (
       <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 py-16 text-subtle text-center">
-        Kết nối ví để xem trang admin (nút{" "}
-        <strong className="text-txt">"Kết nối ví"</strong> ở navbar).
+        {t("admin.connectFirst")}{" "}
+        <strong className="text-txt">{t("admin.connectFirstBtn")}</strong> {t("admin.connectFirst2")}
       </main>
     );
   }
   if (!contracts) {
-    /* Chain allowed nhưng chưa deploy (vd Sepolia khi chưa deploy, hoặc chain lạ
-       vượt NetworkGuard) — empty state có action thay câu text lơ lửng. */
+    /* Chain allowed nhưng chưa deploy — empty state có action thay câu text lơ lửng. */
     return (
       <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
-        <NoDeploymentState page="Admin" />
+        <NoDeploymentState page={t("admin.title")} />
       </main>
     );
   }
@@ -162,15 +163,15 @@ export default function Admin() {
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
       <section className="mt-6 rounded-2xl border border-line band px-6 py-6 sm:px-9">
-        <span className="eyebrow">Vault owner panel</span>
-        <h1 className="mt-3 text-3xl font-bold font-display tracking-tight">Admin console</h1>
+        <span className="eyebrow">{t("admin.eyebrow")}</span>
+        <h1 className="mt-3 text-3xl font-bold font-display tracking-tight">{t("admin.title")}</h1>
         <p className="num text-subtle text-sm mt-1 flex flex-wrap items-center gap-x-1">
-          Vault owner:
+          {t("admin.ownerLabel")}
           {/* Rút gọn 0xAB…XYZ + copy — tránh chuỗi dài làm tràn card trên mobile */}
           {owner && (
             <button
               type="button"
-              title={`${owner} — bấm để copy`}
+              title={t("admin.copyTitle", { addr: owner })}
               onClick={() => void navigator.clipboard?.writeText(owner)}
               className="num text-txt cursor-pointer hover:text-primary transition-colors duration-200"
             >
@@ -178,55 +179,55 @@ export default function Admin() {
             </button>
           )}{" "}
           {isOwner ? (
-            <span className="text-ok">(bạn là owner)</span>
+            <span className="text-ok">{t("admin.youAreOwner")}</span>
           ) : (
-            <span className="text-warn">(không phải bạn — chế độ xem)</span>
+            <span className="text-warn">{t("admin.notOwner")}</span>
           )}
         </p>
       </section>
 
       {!isOwner && (
         <div className="card mt-4 border-subtle/40 flex items-center gap-2 text-sm text-subtle">
-          <Lock size={16} /> Các thao tác write chỉ dành cho owner — form bên dưới bị khóa.
+          <Lock size={16} /> {t("admin.lockedNote")}
         </div>
       )}
 
-      {!owner && <div className="text-subtle text-sm mt-4">Đang đọc state VaultManager…</div>}
+      {!owner && <div className="text-subtle text-sm mt-4">{t("admin.reading")}</div>}
 
       {owner && (
         <>
           {/* ── Vault status: 3 tile ─── */}
-          <section aria-label="Trạng thái vault" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+          <section aria-label={t("admin.vaultStatusAria")} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
             <div className="stat-tile !rounded-2xl !p-4">
-              <div className="text-xs text-subtle">Vault balance (thực)</div>
+              <div className="text-xs text-subtle">{t("admin.tileBalance")}</div>
               <div className="num mt-1 text-2xl font-display">
                 {vaultBal !== null ? fmtToken(vaultBal) : "…"}{" "}
                 <span className="text-sm text-subtle font-body">USDC</span>
               </div>
             </div>
             <div className="stat-tile !rounded-2xl !p-4">
-              <div className="text-xs text-subtle">Owed interest (cam kết trả)</div>
+              <div className="text-xs text-subtle">{t("admin.tileOwed")}</div>
               <div className="num mt-1 text-2xl font-display text-warn">
                 {owed !== null ? fmtToken(owed) : "…"}{" "}
                 <span className="text-sm text-subtle font-body">USDC</span>
               </div>
             </div>
             <div className="stat-tile !rounded-2xl !p-4 !border-ok/30">
-              <div className="text-xs text-subtle">Available (admin rút được)</div>
+              <div className="text-xs text-subtle">{t("admin.tileAvailable")}</div>
               <div className="num mt-1 text-2xl font-display text-ok">
                 {available !== null ? fmtToken(available) : "…"}
               </div>
             </div>
           </section>
 
-          {/* ── Health gauge — solvency trực quan (khớp C2 VM_Insolvent) ─── */}
+          {/* ── Health gauge — solvency trực quan ─── */}
           <div className="card mt-4">
             <div className="flex items-baseline justify-between mb-2">
               <h2 className="font-display text-sm tracking-wider text-subtle">
-                Solvency health
+                {t("admin.healthTitle")}
               </h2>
               {available !== null && available < 0n && (
-                <span className="text-xs text-err num">available &lt; 0 — trạng thái insolvent</span>
+                <span className="text-xs text-err num">{t("admin.insolvent")}</span>
               )}
             </div>
             <VaultHealthGauge balance={vaultBal} owed={owed} />
@@ -234,46 +235,52 @@ export default function Admin() {
 
           <div className="card mt-4 text-sm flex flex-wrap items-center gap-3">
             <span>
-              Hệ thống: {paused ? <strong className="text-err">PAUSED</strong> : <strong className="text-ok">RUNNING</strong>}
+              {t("admin.sysLabel")} {paused ? <strong className="text-err">{t("admin.paused")}</strong> : <strong className="text-ok">{t("admin.running")}</strong>}
               {paused && pauseAt !== null && !emergencyUnlocked && (
                 <span className="text-warn">
-                  {' '}· C5 unlock sau {Math.max(0, Math.ceil((pauseAt + EMERGENCY_DELAY_SECONDS - nowSec) / 3600))} giờ
+                  {' '}· {t("admin.unlockIn", { h: Math.max(0, Math.ceil((pauseAt + EMERGENCY_DELAY_SECONDS - nowSec) / 3600)) })}
                 </span>
               )}
             </span>
             {isOwner && (
               <button type="button" className={`btn ${paused ? "btn-cta" : "btn-danger"} ml-auto`} onClick={() => pauseToggle(!paused)} disabled={pending}>
-                {paused ? "Unpause" : "Pause"}
+                {paused ? t("admin.btnUnpause") : t("admin.btnPause")}
               </button>
             )}
           </div>
 
           {/* ── Plans ─── */}
           <section className="mt-8">
-            <span className="eyebrow">Plan management</span>
-            <h2 className="mt-2 font-display text-xl tracking-tight mb-3">Plans</h2>
+            <span className="eyebrow">{t("admin.plansEyebrow")}</span>
+            <h2 className="mt-2 font-display text-xl tracking-tight mb-3">{t("admin.plansTitle")}</h2>
             <div className="grid gap-3">
               {plans.map((p) => (
                 <div key={p.id} className="num card !p-4 flex flex-wrap items-center gap-3">
                   <span className="eyebrow">#{p.id}</span>
                   <span className="font-display text-lg">
-                    {Number(p.tenorDays)} <span className="text-subtle text-sm">ngày</span>
+                    {Number(p.tenorDays)} <span className="text-subtle text-sm">{t("common.dayUnit")}</span>
                   </span>
                   <span className="text-primary">{formatBps(p.aprBps)}</span>
                   <span className="text-subtle text-sm">
-                    min {p.minDeposit === 0n ? "—" : fmtToken(p.minDeposit)} · max{" "}
-                    {p.maxDeposit === 0n ? "∞" : fmtToken(p.maxDeposit)} · penalty{" "}
+                    {t("admin.minShort")} {p.minDeposit === 0n ? "—" : fmtToken(p.minDeposit)} · {t("admin.maxShort")}{" "}
+                    {p.maxDeposit === 0n ? "∞" : fmtToken(p.maxDeposit)} · {t("admin.penaltyShort")}{" "}
                     <span className="text-warn">{formatBps(p.earlyWithdrawPenaltyBps)}</span>
                   </span>
-                  <StatusBadge status={p.enabled ? 0 : 2} />
+                  {p.enabled ? (
+                    <StatusBadge status={0} />
+                  ) : (
+                    <span className="inline-block rounded-full border border-warn/40 bg-warn/10 px-2.5 py-0.5 text-xs font-semibold text-warn">
+                      {t("plan.paused")}
+                    </span>
+                  )}
 
                   {isOwner && (
                     <div className="ml-auto flex items-center gap-2">
                       <input
-                        aria-label={`APR mới cho plan ${p.id}`}
+                        aria-label={t("admin.newAprAria", { id: p.id })}
                         className="field !w-24 !py-1 text-sm"
                         inputMode="decimal"
-                        placeholder="APR bps"
+                        placeholder={t("admin.aprPh")}
                         value={newApr.id === p.id ? newApr.value : ""}
                         onChange={(e) => setNewApr({ id: p.id, value: e.target.value })}
                       />
@@ -283,7 +290,7 @@ export default function Admin() {
                         disabled={pending}
                         onClick={() => updateApr(p.id)}
                       >
-                        Update
+                        {t("admin.btnUpdate")}
                       </button>
                       <button
                         type="button"
@@ -291,7 +298,7 @@ export default function Admin() {
                         disabled={pending}
                         onClick={() => togglePlan(p.id, !p.enabled)}
                       >
-                        {p.enabled ? "Disable" : "Enable"}
+                        {p.enabled ? t("admin.btnDisable") : t("admin.btnEnable")}
                       </button>
                     </div>
                   )}
@@ -300,41 +307,41 @@ export default function Admin() {
             </div>
 
             {isOwner && (
-              <div className="grid gap-4 mt-4 lg:grid-cols-2 items-start">
+              <div className="grid gap-4 mt-4 lg:grid-cols-2">
                 <div className="card">
-                  <h3 className="font-display mb-3">Tạo plan mới</h3>
+                  <h3 className="font-display mb-3">{t("admin.createTitle")}</h3>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <Field label="Tenor (ngày)" value={fTenor} onChange={setFTenor} placeholder="180" />
-                    <Field label="APR (bps)" value={fApr} onChange={setFApr} placeholder="300" />
-                    <Field label="Penalty (bps)" value={fPenalty} onChange={setFPenalty} placeholder="450" />
-                    <Field label="Min deposit (USDC)" value={fMin} onChange={setFMin} placeholder="100" />
-                    <Field label="Max deposit (USDC)" value={fMax} onChange={setFMax} placeholder="50000" />
+                    <Field label={t("admin.fTenor")} value={fTenor} onChange={setFTenor} placeholder="180" />
+                    <Field label={t("admin.fApr")} value={fApr} onChange={setFApr} placeholder="300" />
+                    <Field label={t("admin.fPenalty")} value={fPenalty} onChange={setFPenalty} placeholder="450" />
+                    <Field label={t("admin.fMin")} value={fMin} onChange={setFMin} placeholder="100" />
+                    <Field label={t("admin.fMax")} value={fMax} onChange={setFMax} placeholder="50000" />
                   </div>
                   <button type="button" className="btn btn-cta mt-3" disabled={pending} onClick={createPlan}>
-                    Tạo plan
+                    {t("admin.btnCreate")}
                   </button>
                 </div>
 
                 {/* Vault funding — đặt cạnh card Tạo plan (2 cột từ lg) */}
                 <section className="card">
-                  <h2 className="font-display mb-1">Nạp / Rút vault</h2>
+                  <h2 className="font-display mb-1">{t("admin.fundTitle")}</h2>
                   <p className="text-xs text-subtle mb-3">
-                    Fund: approve + fundVault (2 tx). Withdraw: rút phần available — không thể rút dưới owed (C2 solvency).
+                    {t("admin.fundNote")}
                   </p>
                   <div className="flex flex-wrap gap-3 items-end">
                     <div>
-                      <label htmlFor="vault-amount">Số USDC</label>
+                      <label htmlFor="vault-amount">{t("admin.amountLabel")}</label>
                       <input
                         id="vault-amount"
                         className="field !w-56"
                         inputMode="decimal"
-                        placeholder="VD: 100000"
+                        placeholder={t("admin.amountPh")}
                         value={vaultAmount}
                         onChange={(e) => setVaultAmount(e.target.value)}
                       />
                     </div>
                     <button type="button" className="btn btn-cta" disabled={pending || !vaultAmount} onClick={fundVault}>
-                      {pending && <Loader2 size={15} className="animate-spin inline mr-1" />} Nạp vault
+                      {pending && <Loader2 size={15} className="animate-spin inline mr-1" />} {t("admin.btnFund")}
                     </button>
                     <button
                       type="button"
@@ -342,12 +349,12 @@ export default function Admin() {
                       disabled={pending || !vaultAmount}
                       onClick={() => (available !== null && parseTokenInput(vaultAmount) <= available ? withdrawVault() : undefined)}
                     >
-                      Rút vault
+                      {t("admin.btnWithdraw")}
                     </button>
                   </div>
                   {available !== null && vaultAmount && parseTokenInput(vaultAmount) > available && (
                     <p className="text-xs text-err mt-2" role="alert">
-                      Chỉ rút được tối đa {fmtToken(available)} USDC (C2: không vượt available).
+                      {t("admin.withdrawCap", { amount: fmtToken(available) })}
                     </p>
                   )}
                 </section>

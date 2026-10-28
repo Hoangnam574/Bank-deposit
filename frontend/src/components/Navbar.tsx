@@ -9,7 +9,7 @@
  */
 import { useEffect, useState, type ComponentType } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Landmark, Droplet, ShieldCheck, Home, PlusCircle, Wallet } from "lucide-react";
+import { Landmark, Droplet, ShieldCheck, Home, PlusCircle, Wallet, Languages } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
@@ -18,12 +18,13 @@ import { findHardhatAccount } from "@/lib/accounts";
 import NetworkMenu from "@/components/NetworkMenu";
 import { useTx } from "@/hooks/useTx";
 import { useAdminRole } from "@/hooks/useAdminRole";
+import { useLang, type TKey } from "@/lib/i18n";
 
-const NAV: { to: string; label: string; icon: ComponentType<{ size?: number; className?: string }> }[] = [
-  { to: "/", label: "Kế hoạch", icon: Home },
-  { to: "/open", label: "Mở tiết kiệm", icon: PlusCircle },
-  { to: "/deposits", label: "Sổ tiết kiệm", icon: Wallet },
-  { to: "/admin", label: "Admin", icon: ShieldCheck },
+const NAV: { to: string; key: TKey; icon: ComponentType<{ size?: number; className?: string }> }[] = [
+  { to: "/", key: "nav.overview", icon: Home },
+  { to: "/open", key: "nav.open", icon: PlusCircle },
+  { to: "/deposits", key: "nav.deposits", icon: Wallet },
+  { to: "/admin", key: "nav.admin", icon: ShieldCheck },
 ];
 
 export default function Navbar() {
@@ -32,6 +33,7 @@ export default function Navbar() {
   const signerC = useSignerContracts();
   const { run, state } = useTx();
   const { isAdmin } = useAdminRole();
+  const { lang, setLang, t } = useLang();
   const [balance, setBalance] = useState<bigint | null>(null);
 
   /* USDC balance — refresh khi tx thành công (bank:tx-ok); vai trò admin dùng useAdminRole */
@@ -67,8 +69,8 @@ export default function Navbar() {
   const navItems = NAV.filter((item) => item.to !== "/admin" || isAdmin);
 
   const faucet = () => {
-    void run("Faucet: mint 1.000 USDC", async () => {
-      if (!signerC || !address) throw new Error("Chưa kết nối ví");
+    void run(t("nav.faucetLabel"), async () => {
+      if (!signerC || !address) throw new Error(t("nav.txNoWallet"));
       const tx = (await signerC.usdc.mint(address, SCALAR * 1000n)) as unknown as ContractTransactionResponse;
       return tx;
     });
@@ -91,7 +93,7 @@ export default function Navbar() {
               </span>
             </Link>
 
-            <nav aria-label="Điều hướng chính" className="flex items-center gap-1 flex-nowrap">
+            <nav aria-label={t("nav.mainAria")} className="flex items-center gap-1 flex-nowrap">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
@@ -107,7 +109,7 @@ export default function Navbar() {
                 >
                   {({ isActive }) => (
                     <>
-                      {item.label}
+                      {t(item.key)}
                       {isActive && (
                         <span
                           aria-hidden
@@ -122,6 +124,15 @@ export default function Navbar() {
 
             <div className="ml-auto flex items-center gap-2 flex-nowrap justify-end">
               <NetworkMenu />
+              <button
+                type="button"
+                aria-label={t("nav.langAria")}
+                title={t("nav.langAria")}
+                onClick={() => setLang(lang === "vi" ? "en" : "vi")}
+                className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs inline-flex items-center gap-1 shrink-0"
+              >
+                <Languages size={14} /> {lang === "vi" ? "EN" : "VI"}
+              </button>
               {isAdmin && (
                 <span className="inline-flex items-center gap-1 rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[11px] font-semibold text-ok whitespace-nowrap">
                   <ShieldCheck size={12} /> Admin
@@ -137,25 +148,27 @@ export default function Navbar() {
                   disabled={state.status === "pending"}
                   className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs inline-flex items-center gap-1 shrink-0"
                 >
-                  <Droplet size={14} /> Faucet 1k
+                  <Droplet size={14} /> {t("nav.faucet")}
                 </button>
               )}
               {address ? (
                 <div className="flex items-center gap-2 whitespace-nowrap">
                   <span
                     className="num text-sm"
-                    title={demo ? `Hardhat account #${demo.index} — ${demo.role}` : "Account ngoài (có thể không có ETH/USDC local)"}
+                    title={demo
+                      ? t("nav.demoTitle", { i: demo.index, role: demo.role })
+                      : t("nav.extTitle")}
                   >
                     {address.slice(0, 6)}…{address.slice(-4)}
                     {demo && <span className="text-xs text-subtle hidden xl:inline"> (#{demo.index})</span>}
                   </span>
                   <button type="button" onClick={disconnect} className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs shrink-0">
-                    Ngắt
+                    {t("nav.disconnect")}
                   </button>
                 </div>
               ) : (
                 <button type="button" onClick={() => void connect()} disabled={connecting} className="btn btn-cta !py-1.5 shrink-0">
-                  {connecting ? "Đang kết nối" : "Kết nối ví"}
+                  {connecting ? t("nav.connecting") : t("nav.connect")}
                 </button>
               )}
             </div>
@@ -174,12 +187,20 @@ export default function Navbar() {
 
             <div className="flex items-center gap-1.5 min-w-0">
               <NetworkMenu compact />
+              <button
+                type="button"
+                aria-label={t("nav.langAria")}
+                onClick={() => setLang(lang === "vi" ? "en" : "vi")}
+                className="btn btn-outline !px-2 !py-1.5 text-xs shrink-0"
+              >
+                {lang === "vi" ? "EN" : "VI"}
+              </button>
               {isTestChain && address && (
                 <button
                   type="button"
                   onClick={faucet}
                   disabled={state.status === "pending"}
-                  aria-label="Faucet — mint 1.000 USDC"
+                  aria-label={t("nav.faucetAria")}
                   className="btn btn-outline !px-2 !py-1.5 shrink-0"
                 >
                   <Droplet size={14} />
@@ -189,7 +210,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={disconnect}
-                  title={`${address} — nhấn để ngắt kết nối`}
+                  title={t("nav.disconnectTitle", { addr: address })}
                   className="btn btn-outline !px-2 !py-1.5 text-xs shrink-0"
                 >
                   {address.slice(0, 5)}…{address.slice(-3)}
@@ -201,7 +222,7 @@ export default function Navbar() {
                   disabled={connecting}
                   className="btn btn-cta !px-2.5 !py-1.5 text-xs shrink-0"
                 >
-                  {connecting ? "Đang kết nối" : "Kết nối"}
+                  {connecting ? t("nav.connecting") : t("nav.connectShort")}
                 </button>
               )}
             </div>
@@ -212,7 +233,7 @@ export default function Navbar() {
 
       {/* ── MOBILE footer-nav: cố định đáy, kho to dễ chạm (≥44px) ── */}
       <nav
-        aria-label="Điều hướng chính (mobile)"
+        aria-label={t("nav.mainAriaMobile")}
         className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-line bg-bg"
       >
         <div
@@ -233,7 +254,7 @@ export default function Navbar() {
               {({ isActive }) => (
                 <>
                   <item.icon size={18} className={isActive ? "text-primary" : undefined} />
-                  <span className={`text-[10px] leading-tight ${isActive ? "font-semibold" : ""}`}>{item.label}</span>
+                  <span className={`text-[10px] leading-tight ${isActive ? "font-semibold" : ""}`}>{t(item.key)}</span>
                 </>
               )}
             </NavLink>

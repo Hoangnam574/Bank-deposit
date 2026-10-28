@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from "react";
 import { fmtCountdown, fmtDate } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 
 interface Props {
   targetSec: number | bigint;
@@ -14,16 +15,19 @@ interface Props {
 
 export default function Countdown({ targetSec, nowSec, showExact = true }: Props) {
   const [tick, setTick] = useState(0);
+  const { t } = useLang();
   useEffect(() => {
-    const t = window.setInterval(() => setTick((x) => x + 1), 1000);
-    return () => window.clearInterval(t);
+    const t2 = window.setInterval(() => setTick((x) => x + 1), 1000);
+    return () => window.clearInterval(t2);
   }, []);
   void tick; // chỉ cần render lại theo interval
 
   const passed = Number(targetSec) <= nowSec;
   return (
     <span className={passed ? "text-warn" : "text-subtle"}>
-      {passed ? "Đã đáo hạn" : `${fmtCountdown(targetSec, nowSec + tick)}${showExact ? ` · ${fmtDate(targetSec)}` : ""}`}
+      {passed
+        ? t("countdown.done")
+        : `${fmtCountdown(targetSec, nowSec + tick)}${showExact ? ` · ${fmtDate(targetSec)}` : ""}`}
     </span>
   );
 }

@@ -12,6 +12,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { formatBps, fmtToken, previewInterestOnAmount, SCALAR } from "@/lib/format";
 import type { PlanRow } from "@/components/PlanCard";
+import { useLang } from "@/lib/i18n";
 
 interface Props {
   plans: PlanRow[];
@@ -34,6 +35,7 @@ export default function RenewPlanSelect({
   const [open, setOpen] = useState(false);
   const [previewId, setPreviewId] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const { t } = useLang();
 
   const selected = plans.find((p) => p.id === value) ?? null;
   const spec = plans.find((p) => p.id === (previewId ?? value)) ?? null;
@@ -90,10 +92,10 @@ export default function RenewPlanSelect({
       >
         <span className={`truncate ${selected ? "" : "text-muted"}`}>
           {plansLoading && !selected
-            ? "Đang tải plans…"
+            ? t("plan.loading")
             : selected
-              ? `Plan #${selected.id} — ${formatBps(selected.aprBps)} · ${Number(selected.tenorDays)} ngày`
-              : "Chọn plan…"}
+              ? `${t("plan.fmt", { id: selected.id })} — ${formatBps(selected.aprBps)} · ${t("detail.days", { d: Number(selected.tenorDays) })}`
+              : t("plan.choose")}
         </span>
         <ChevronDown
           size={16}
@@ -104,7 +106,7 @@ export default function RenewPlanSelect({
 
       {open && (
         <div className="absolute z-40 left-0 right-0 mt-1 rounded-lg border border-line bg-card p-1 shadow-lg">
-          <ul role="listbox" aria-label="Plan cho Renew" className="max-h-64 overflow-y-auto">
+          <ul role="listbox" aria-label={t("plan.renewListAria")} className="max-h-64 overflow-y-auto">
             {plans.map((p) => {
               const isSel = p.id === value;
               return (
@@ -125,12 +127,12 @@ export default function RenewPlanSelect({
                   }}
                 >
                   <span className="truncate">
-                    Plan #{p.id}
-                    {p.id === currentPlanId && <span className="text-primary"> (plan hiện tại)</span>}
-                    {!p.enabled && <span className="text-warn"> · Tạm ngưng</span>}
+                    {t("plan.fmt", { id: p.id })}
+                    {p.id === currentPlanId && <span className="text-primary"> {t("plan.ofCurrent")}</span>}
+                    {!p.enabled && <span className="text-warn"> {t("plan.pausedShort")}</span>}
                   </span>
                   <span className="num text-xs text-subtle whitespace-nowrap">
-                    {formatBps(p.aprBps)} · {Number(p.tenorDays)} ngày
+                    {formatBps(p.aprBps)} · {t("detail.days", { d: Number(p.tenorDays) })}
                     {isSel && <Check size={14} className="inline ml-1.5 text-primary" aria-hidden />}
                   </span>
                 </li>
@@ -144,12 +146,12 @@ export default function RenewPlanSelect({
               <>
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-[11px] uppercase tracking-wider text-subtle">
-                    Plan #{spec.id}
+                    {t("plan.fmt", { id: spec.id })}
                     {spec.id === currentPlanId && (
-                      <span className="text-primary normal-case"> · plan hiện tại</span>
+                      <span className="text-primary normal-case"> {t("plan.currentTag")}</span>
                     )}
                   </span>
-                  {spec.id !== currentPlanId && <span className="text-[11px] text-muted">plan mới</span>}
+                  {spec.id !== currentPlanId && <span className="text-[11px] text-muted">{t("plan.newTag")}</span>}
                 </div>
                 <dl className="num grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   <div className="flex justify-between gap-2">
@@ -157,23 +159,23 @@ export default function RenewPlanSelect({
                     <dd className="text-primary">{formatBps(spec.aprBps)}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-subtle">Kỳ hạn</dt>
-                    <dd>{Number(spec.tenorDays)} ngày</dd>
+                    <dt className="text-subtle">{t("detail.boxTenor")}</dt>
+                    <dd>{t("detail.days", { d: Number(spec.tenorDays) })}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-subtle">Tối thiểu</dt>
+                    <dt className="text-subtle">{t("plan.min")}</dt>
                     <dd>{spec.minDeposit === 0n ? "—" : `${fmtToken(spec.minDeposit)} USDC`}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-subtle">Tối đa</dt>
-                    <dd>{spec.maxDeposit === 0n ? "Không giới hạn" : `${fmtToken(spec.maxDeposit)} USDC`}</dd>
+                    <dt className="text-subtle">{t("plan.max")}</dt>
+                    <dd>{spec.maxDeposit === 0n ? t("plan.noMax") : `${fmtToken(spec.maxDeposit)} USDC`}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-subtle">Phạt rút sớm</dt>
+                    <dt className="text-subtle">{t("plan.penalty")}</dt>
                     <dd className="text-warn">−{formatBps(spec.earlyWithdrawPenaltyBps)}</dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-subtle">Lãi đủ hạn 1.000</dt>
+                    <dt className="text-subtle">{t("plan.maturity1k")}</dt>
                     <dd className="text-ok">
                       +{fmtToken(previewInterestOnAmount(1_000n * SCALAR, spec.tenorDays, spec.aprBps), 2)} USDC
                     </dd>
@@ -182,7 +184,7 @@ export default function RenewPlanSelect({
               </>
             ) : (
               <p className="text-xs text-subtle">
-                Trỏ chuột vào một plan để xem thông số (APR · kỳ hạn · min/max · phạt rút sớm).
+                {t("plan.hoverHint")}
               </p>
             )}
           </div>

@@ -6,6 +6,7 @@
 import { AlertTriangle, RefreshCw, LoaderCircle } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
 import HardhatKeyImport from "@/components/HardhatKeyImport";
+import { useLang } from "@/lib/i18n";
 
 const CHAIN_LABEL: Record<number, string> = {
   31337: "Hardhat Local",
@@ -14,15 +15,16 @@ const CHAIN_LABEL: Record<number, string> = {
 
 export default function NoDeploymentState({ page }: { page: string }) {
   const { chainId, hasWallet } = useWallet();
+  const { t } = useLang();
 
   /* NHÁNH 1 — trình duyệt chưa có ví web3 nào: */
   if (!hasWallet) {
     return (
       <div className="card max-w-2xl mx-auto mt-10" role="status">
-        <h2 className="font-display text-lg">Chưa phát hiện ví web3</h2>
+        <h2 className="font-display text-lg">{t("wallet.noDetected")}</h2>
         <p className="text-sm text-subtle mt-1">
-          Cài đặt <strong className="text-txt">MetaMask</strong> (hoặc Rabby/OKX...) rồi bấm
-          "Kết nối ví" ở góc phải header.
+          {t("wallet.installHint1")} <strong className="text-txt">MetaMask</strong> {t("wallet.installHint2")}{" "}
+          “{t("wallet.connectBtn")}” {t("wallet.installHint3")}
         </p>
       </div>
     );
@@ -36,7 +38,7 @@ export default function NoDeploymentState({ page }: { page: string }) {
       <div className="card max-w-2xl mx-auto mt-10" role="status">
         <div className="flex items-center gap-2">
           <LoaderCircle size={16} className="animate-spin text-subtle" />
-          <span className="text-sm text-subtle">Đang đọc dữ liệu on-chain...</span>
+          <span className="text-sm text-subtle">{t("wallet.reading")}</span>
         </div>
       </div>
     );
@@ -48,24 +50,25 @@ export default function NoDeploymentState({ page }: { page: string }) {
       <div className="flex items-start gap-3">
         <AlertTriangle className="text-warn shrink-0 mt-0.5" size={22} />
         <div>
-          <h2 className="font-display text-lg">Trang {page} chưa có dữ liệu contract</h2>
+          <h2 className="font-display text-lg">{t("nodeploy.title", { page })}</h2>
           <p className="text-sm text-subtle mt-1">
-            Chain đang kết nối:{" "}
+            {t("nodeploy.chainLine")}{" "}
             <strong className="num text-txt">{chainId ?? "—"}</strong>
-            {chainId !== null && CHAIN_LABEL[chainId] ? ` (${CHAIN_LABEL[chainId]})` : ""} — dapp chỉ có
-            deployment trên <strong className="text-primary">31337 (local)</strong> và{" "}
-            <strong className="text-primary">11155111 (Sepolia, nếu đã deploy)</strong>.
+            {chainId !== null && CHAIN_LABEL[chainId] ? ` (${CHAIN_LABEL[chainId]})` : ""}{" "}
+            {t("nodeploy.deployments")}{" "}
+            <strong className="text-primary">31337 (local)</strong> và{" "}
+            <strong className="text-primary">{t("nodeploy.sepoliaNote")}</strong>.
           </p>
         </div>
       </div>
 
       <p className="text-sm text-subtle mt-4">
-        Đổi mạng: bấm <strong className="text-txt">pill tên mạng ở góc phải header</strong> để mở
-        modal "Chọn mạng của bạn".
+        {t("nodeploy.switchHint")} <strong className="text-txt">{t("nodeploy.switchHintPill")}</strong>{" "}
+        {t("nodeploy.switchHintModal")}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className="btn btn-outline" onClick={() => window.location.reload()}>
-          <RefreshCw size={14} className="mr-1 inline" /> Reload trang
+          <RefreshCw size={14} className="mr-1 inline" /> {t("common.reload")}
         </button>
       </div>
 

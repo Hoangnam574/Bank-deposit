@@ -7,9 +7,11 @@
 import { useEffect } from "react";
 import { X, Wallet } from "lucide-react";
 import { useWallet, type WalletEntry } from "@/providers/WalletProvider";
+import { useLang } from "@/lib/i18n";
 
 export default function WalletPicker() {
   const { walletOptions, pickOpen, closePicker, connect, connecting } = useWallet();
+  const { t } = useLang();
 
   /* ESC để đóng; khoá scroll nền khi modal mở */
   useEffect(() => {
@@ -41,18 +43,18 @@ export default function WalletPicker() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Chọn ví để kết nối"
+        aria-label={t("wallet.pickerAria")}
         className="card w-full max-w-sm !p-0 relative"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
           <div>
-            <span className="eyebrow !text-muted">Kết nối ví</span>
-            <h2 className="mt-1.5 text-base font-display font-semibold">Chọn ví của bạn</h2>
+            <span className="eyebrow !text-muted">{t("wallet.pickerEyebrow")}</span>
+            <h2 className="mt-1.5 text-base font-display font-semibold">{t("wallet.pickerTitle")}</h2>
           </div>
           <button
             type="button"
-            aria-label="Đóng"
+            aria-label={t("common.close")}
             className="grid place-items-center w-8 h-8 rounded-md text-subtle hover:text-txt hover:bg-panel cursor-pointer transition-colors duration-200"
             onClick={closePicker}
           >
@@ -81,7 +83,7 @@ export default function WalletPicker() {
             </button>
           ))}
           <p className="px-3 pb-2 pt-1 text-xs text-muted leading-relaxed">
-            Bấm vào ví bạn muốn dùng — trang chỉ giao dịch với ví đã chọn.
+            {t("wallet.pickerHint")}
           </p>
         </div>
       </div>

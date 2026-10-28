@@ -3,6 +3,7 @@
  * (audit redesign-existing-projects: "spinner → skeleton loaders").
  * CSS-only shimmer qua .skeleton; prefers-reduced-motion tự tắt.
  */
+import { useLang } from "@/lib/i18n";
 
 /** Khối nội suyány áp — dùng cho mọi kích thước */
 export function Sk({ className = "h-4 w-full" }: { className?: string }) {
@@ -28,8 +29,9 @@ export function SkeletonCard() {
 }
 
 export function SkeletonGrid({ count = 4 }: { count?: number }) {
+  const { t } = useLang();
   return (
-    <div role="status" aria-label="Đang tải dữ liệu" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div role="status" aria-label={t("skeleton.loading")} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }, (_, i) => <SkeletonCard key={i} />)}
     </div>
   );
@@ -52,8 +54,9 @@ export function SkeletonDeposit() {
 }
 
 export function SkeletonRows({ count = 2 }: { count?: number }) {
+  const { t } = useLang();
   return (
-    <div role="status" aria-label="Đang tải dữ liệu" className="grid gap-4 sm:grid-cols-2">
+    <div role="status" aria-label={t("skeleton.loading")} className="grid gap-4 sm:grid-cols-2">
       {Array.from({ length: count }, (_, i) => <SkeletonDeposit key={i} />)}
     </div>
   );

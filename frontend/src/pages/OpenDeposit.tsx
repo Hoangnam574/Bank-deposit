@@ -25,6 +25,7 @@ import {
   formatBps,
   SCALAR,
 } from "@/lib/format";
+import { useLang } from "@/lib/i18n";
 
 export default function OpenDeposit() {
   const { plans, loading, error } = usePlans();
@@ -32,6 +33,7 @@ export default function OpenDeposit() {
   const signerC = useSignerContracts();
   const { run, state } = useTx();
   const confirm = useConfirm();
+  const { t } = useLang();
   const [selected, setSelected] = useState<number | null>(null);
   const [amountStr, setAmountStr] = useState("");
   const [balance, setBalance] = useState<bigint | null>(null);
@@ -83,17 +85,17 @@ export default function OpenDeposit() {
     balance !== null &&
     balance >= gpAmount;
   const invalidReason = !plan
-    ? "Chọn một plan"
+    ? t("open.reasonNoPlan")
     : !plan.enabled
-      ? "Plan tạm ngưng"
+      ? t("open.reasonPaused")
       : amount === null || gpAmount === 0n
-        ? "Nhập số tiền"
+        ? t("open.reasonNoAmount")
         : plan.maxDeposit !== 0n && gpAmount > plan.maxDeposit
-          ? `Tối đa ${fmtToken(plan.maxDeposit)} USDC`
+          ? t("open.reasonMax", { max: fmtToken(plan.maxDeposit) })
           : gpAmount < (plan.minDeposit || SCALAR)
-            ? `Tối thiểu ${fmtToken(plan.minDeposit)} USDC`
+            ? t("open.reasonMin", { min: fmtToken(plan.minDeposit) })
             : balance !== null && balance < gpAmount
-              ? `Số dư chỉ ${fmtToken(balance)} USDC`
+              ? t("open.reasonBalance", { bal: fmtToken(balance) })
               : "";
 
   /* ── MỞ SỔ — 1 lần bấm: approve (nếu cần) → openDeposit → dialog thành công ── */
@@ -111,24 +113,24 @@ export default function OpenDeposit() {
 
     if (allow < amount) {
       const ok = await confirm({
-        title: "Cần Approve USDC",
+        title: t("open.approveTitle"),
         message: (
           <>
-            ERC-20 bắt buộc: <strong>approve</strong> — cho phép hợp đồng rút{" "}
-            <strong className="num">{fmtToken(amount, 2)} USDC</strong> từ ví của bạn để mở sổ.
+            {t("open.approve1")} <strong>approve</strong> {t("open.approve2")}{" "}
+            <strong className="num">{fmtToken(amount, 2)} USDC</strong> {t("open.approve3")}
             <br />
-            Sẽ có <strong>2 popup MetaMask liên tiếp</strong>: (1) Approve → (2) Mở sổ. Chỉ cần
-            approve lại khi số tiền vượt hạn mức còn dư.
+            {t("open.approve4")} <strong>{t("open.approve5")}</strong>
+            {t("open.approve6")}
           </>
         ),
-        okLabel: "Approve & Mở tiết kiệm",
+        okLabel: t("open.approveOk"),
       });
       if (!ok) return;
     }
 
     const iface = signerC.core.interface;
     let newId: number | null = null;
-    const hash = await run("Mở tiết kiệm", async () => {
+    const hash = await run(t("open.cta"), async () => {
       /* Bước 1 (khi cần): approve — mined xong mới sang bước 2 */
       if (allow < amount) {
         const atx = (await signerC.usdc.approve(coreAddr, amount)) as unknown as ContractTransactionResponse;
@@ -152,18 +154,18 @@ export default function OpenDeposit() {
 
     /* ── Dialog thành công — 2 lựa chọn (Esc/click nền = về trang chủ) ── */
     const goDetail = await confirm({
-      title: "Mở sổ thành công",
+      title: t("open.successTitle"),
       message: (
         <>
-          Sổ <strong className="num">#{newId}</strong> đã mở:{" "}
+          {t("open.success1")} <strong className="num">#{newId}</strong> {t("open.success2")}{" "}
           <strong className="num">{fmtToken(amount, 2)} USDC</strong> ·{" "}
-          <span className="num">{Number(plan.tenorDays)} ngày</span> · APR{" "}
-          <span className="num text-primary">{formatBps(plan.aprBps)}</span> · đáo hạn (ước lượng){" "}
+          <span className="num">{t("detail.days", { d: Number(plan.tenorDays) })}</span> · {t("open.success3")}{" "}
+          <span className="num text-primary">{formatBps(plan.aprBps)}</span> {t("open.success4")}{" "}
           <span className="num">{fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * 86_400)}</span>.
         </>
       ),
-      okLabel: "Xem sổ",
-      cancelLabel: "Về trang chủ",
+      okLabel: t("open.successOk"),
+      cancelLabel: t("open.successCancel"),
     });
     if (goDetail) navigate(`/deposit/${newId}`);
     else navigate("/");
@@ -172,12 +174,12 @@ export default function OpenDeposit() {
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
       <div className="mt-8">
-        <span className="eyebrow">Mở deposit mới</span>
-        <h1 className="mt-3 text-4xl font-bold font-display tracking-tight">Mở tiết kiệm</h1>
+        <span className="eyebrow">{t("open.eyebrow")}</span>
+        <h1 className="mt-3 text-4xl font-bold font-display tracking-tight">{t("open.title")}</h1>
       </div>
       {error && <div className="card border-err/40 text-err text-sm mt-4">{error}</div>}
       {loading && (
-        <div className="mt-6" role="status" aria-label="Đang tải plans">
+        <div className="mt-6" role="status" aria-label={t("open.loadingAria")}>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }, (_, i) => (
               <div key={i} className="card" aria-hidden>
@@ -190,7 +192,7 @@ export default function OpenDeposit() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-6" aria-label="Danh sách plan">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-6" aria-label={t("open.plansAria")}>
         {/* Chỉ hiện plan đang bật — plan disable không còn là offer (user: "disable thì không hiện plan nữa") */}
         {plans
           .filter((p) => p.enabled)
@@ -208,21 +210,21 @@ export default function OpenDeposit() {
 
       {/* ── Form + sticky summary (2 cột từ lg) ─── */}
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_340px] items-start">
-        <section className="card order-2 lg:order-1" aria-label="Form mở tiết kiệm">
+        <section className="card order-2 lg:order-1" aria-label={t("open.formAria")}>
           <label htmlFor="amount-input" className="!text-sm !font-semibold !text-txt">
-            Số tiền muốn gửi (USDC)
+            {t("open.amountLabel")}
           </label>
           <input
             id="amount-input"
             className="field num text-lg"
             inputMode="decimal"
-            placeholder="VD: 1000"
+            placeholder={t("open.amountPh")}
             value={amountStr}
             onChange={(e) => setAmountStr(e.target.value)}
             disabled={!plan || !address}
           />
           {balance !== null && amountStr && gpAmount > 0n && (
-            <p className="num text-xs text-subtle mt-1.5">Số dư hiện tại: {fmtToken(balance)} USDC</p>
+            <p className="num text-xs text-subtle mt-1.5">{t("open.balanceNow", { bal: fmtToken(balance) })}</p>
           )}
 
           {invalidReason && (
@@ -239,50 +241,48 @@ export default function OpenDeposit() {
               onClick={() => void openDeposit()}
               disabled={!valid || state.status === "pending"}
             >
-              {state.status === "pending" ? <Loader2 className="animate-spin" size={16} /> : null} Mở tiết kiệm
+              {state.status === "pending" ? <Loader2 className="animate-spin" size={16} /> : null} {t("open.cta")}
             </button>
           </div>
           <p className="text-[11px] text-subtle mt-2 text-right">
-            {state.status === "pending"
-              ? "Đang xử lý — nếu có, approve hiện trước rồi tự mở sổ (2 popup MetaMask)."
-              : "Bấm 1 lần: cần approve thì hiện dialog trước, xong tự mở sổ."}
+            {state.status === "pending" ? t("open.hintPending") : t("open.hintIdle")}
           </p>
         </section>
 
         {/* Sticky summary */}
-        <aside className="card order-1 lg:order-2 lg:sticky lg:top-24 !border-primary/40" aria-label="Tóm tắt kỳ hạn">
-          <span className="eyebrow !border-primary/30 !text-primary">Tóm tắt kỳ hạn</span>
+        <aside className="card order-1 lg:order-2 lg:sticky lg:top-24 !border-primary/40" aria-label={t("open.summaryEyebrow")}>
+          <span className="eyebrow !border-primary/30 !text-primary">{t("open.summaryEyebrow")}</span>
           {plan && gpAmount > 0n ? (
             <dl className="num mt-4 space-y-2.5 text-sm">
               <div className="flex justify-between items-baseline">
-                <dt className="text-subtle">Lãi dự kiến đủ hạn</dt>
+                <dt className="text-subtle">{t("open.sumInterest")}</dt>
                 <dd className="num text-ok text-base">
                   +{fmtToken(previewInterestOnAmount(gpAmount, plan.tenorDays, plan.aprBps), 4)}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-subtle">Phạt nếu rút sớm</dt>
+                <dt className="text-subtle">{t("open.sumPenalty")}</dt>
                 <dd className="text-warn">−{fmtToken((gpAmount * plan.earlyWithdrawPenaltyBps) / 10_000n, 2)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-subtle">APR · Kỳ hạn</dt>
+                <dt className="text-subtle">{t("open.sumAprTenor")}</dt>
                 <dd>
-                  {formatBps(plan.aprBps)} · {Number(plan.tenorDays)} ngày
+                  {formatBps(plan.aprBps)} · {t("detail.days", { d: Number(plan.tenorDays) })}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-subtle">Đáo hạn (ước lượng)</dt>
+                <dt className="text-subtle">{t("open.sumMaturity")}</dt>
                 <dd className="text-right">
                   {amount !== null ? fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * 86_400) : "—"}
                 </dd>
               </div>
               <div className="pt-3 border-t border-line text-xs text-subtle leading-relaxed">
-                Lãi tính theo giây — số hiển thị khớp logic contract (floor, D9).
+                {t("open.sumNote")}
               </div>
             </dl>
           ) : (
             <p className="mt-3 text-sm text-subtle leading-relaxed">
-              Chọn plan ở trên + nhập số tiền để xem preview lãi / phạt / ngày đáo hạn ở đây.
+              {t("open.sumEmpty")}
             </p>
           )}
         </aside>

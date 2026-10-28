@@ -5,6 +5,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
+import { useLang } from "@/lib/i18n";
 
 export interface ConfirmOptions {
   /** Tiêu đề cửa sổ (mặc định "Xác nhận"). */
@@ -61,6 +62,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   }, [pending, settle]);
 
   const tone = pending?.tone ?? "primary";
+  const { t } = useLang();
 
   return (
     <ConfirmCtx.Provider value={confirm}>
@@ -73,7 +75,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={pending.title ?? "Xác nhận"}
+            aria-label={pending.title ?? t("confirm.defaultTitle")}
             className="card w-full max-w-md !p-0 max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -86,7 +88,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 />
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base font-semibold font-display text-txt">
-                    {pending.title ?? "Xác nhận"}
+                    {pending.title ?? t("confirm.defaultTitle")}
                   </h3>
                   <div className="mt-2 text-sm text-subtle whitespace-pre-wrap">{pending.message}</div>
                 </div>
@@ -94,7 +96,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             </div>
             <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
               <button type="button" className="btn btn-outline cursor-pointer" onClick={() => settle(false)}>
-                {pending.cancelLabel ?? "Hủy"}
+                {pending.cancelLabel ?? t("confirm.defaultCancel")}
               </button>
               <button
                 type="button"
@@ -102,7 +104,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 className={`btn cursor-pointer ${tone === "danger" ? "btn-danger" : "btn-cta"}`}
                 onClick={() => settle(true)}
               >
-                {pending.okLabel ?? "Xác nhận"}
+                {pending.okLabel ?? t("confirm.defaultOk")}
               </button>
             </div>
           </div>

@@ -24,6 +24,7 @@ import { useTx } from "@/hooks/useTx";
 import { usePlans } from "@/hooks/usePlans";
 import RenewPlanSelect from "@/components/RenewPlanSelect";
 import { fmtToken, formatBps, fmtDate } from "@/lib/format";
+import { useLang, rawT } from "@/lib/i18n";
 
 const SCALAR = 1_000_000n;
 const ACTIVE = 0;
@@ -60,7 +61,7 @@ interface ClosedResult {
 }
 
 function parseInput(input: string): bigint {
-  if (!/^[0-9]+(\.[0-9]+)?$/.test(input)) throw new Error("Số tiền không hợp lệ");
+  if (!/^[0-9]+(\.[0-9]+)?$/.test(input)) throw new Error(rawT("err.amountInvalid"));
   const [int, frac = ""] = input.split(".");
   const fracPadded = frac.padEnd(6, "0").slice(0, 6);
   return BigInt(int || "0") * SCALAR + BigInt(fracPadded || "0");
@@ -75,6 +76,7 @@ export default function DepositDetail() {
   const { address, getBrowser, chainId } = useWallet();
   const { state, run } = useTx();
   const confirm = useConfirm();
+  const { t } = useLang();
 
   const [d, setD] = useState<Detail | null>(null);
   const [pv, setPv] = useState<Preview | null>(null);
@@ -353,7 +355,7 @@ export default function DepositDetail() {
     if (!signerC || depositId === null) return;
     const iface = signerC.core.interface;
     let newId: number | null = null;
-    const hash = await run("Tự động renew", async () => {
+    const hash = await run(t("detail.txRenew"), async () => {
       const tx = (await signerC.core.renewDeposit(depositId, planId)) as unknown as ContractTransactionResponse;
       const receipt = await tx.wait();
       for (const log of receipt?.logs ?? []) {
@@ -375,17 +377,16 @@ export default function DepositDetail() {
         <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-20">
           <section className="mt-10 card !rounded-2xl py-16 px-6 text-center">
             <CheckCircle2 size={44} className="text-ok mx-auto" aria-hidden />
-            <h1 className="mt-4 text-xl font-semibold font-display text-txt">Rút thành công</h1>
+            <h1 className="mt-4 text-xl font-semibold font-display text-txt">{t("detail.withdrawnOkTitle")}</h1>
             <p className="mt-2 text-sm text-subtle max-w-md mx-auto">
-              Deposit #{depositId} đã tất toán — NFT đã burn, số tiền (principal + lãi / sau penalty)
-              đã về ví của bạn.
+              {t("detail.withdrawnOkBody", { id: depositId })}
             </p>
             <div className="mt-6 flex justify-center gap-3">
               <Link to="/deposits" className="btn btn-cta cursor-pointer">
-                Về sổ tiết kiệm
+                {t("detail.toDeposits")}
               </Link>
               <Link to="/" className="btn btn-outline cursor-pointer">
-                Về trang chủ
+                {t("detail.toHome")}
               </Link>
             </div>
           </section>
@@ -399,21 +400,20 @@ export default function DepositDetail() {
           onClick={() => navigate(-1)}
           className="mt-8 btn btn-outline !py-1.5 !px-3 text-xs inline-flex items-center gap-1 cursor-pointer"
         >
-          <ArrowLeft size={14} /> Trở về
+          <ArrowLeft size={14} /> {t("detail.back")}
         </button>
         <section className="mt-4 card !rounded-2xl py-16 px-6 text-center">
           <SearchX size={40} className="text-subtle mx-auto" aria-hidden />
-          <h1 className="mt-4 text-xl font-semibold font-display text-txt">Không tìm thấy deposit #{depositId}</h1>
+          <h1 className="mt-4 text-xl font-semibold font-display text-txt">{t("detail.notFoundTitle", { id: depositId })}</h1>
           <p className="mt-2 text-sm text-subtle max-w-md mx-auto">
-            NFT của deposit này có thể đã burn sau khi rút, hoặc URL trỏ đến ID chưa từng tồn tại trên
-            mạng đang kết nối. Kiểm tra ID trong sổ tiết kiệm của bạn.
+            {t("detail.notFoundBody")}
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <Link to="/deposits" className="btn btn-cta cursor-pointer">
-              Về sổ tiết kiệm
+              {t("detail.toDeposits")}
             </Link>
             <Link to="/" className="btn btn-outline cursor-pointer">
-              Về trang chủ
+              {t("detail.toHome")}
             </Link>
           </div>
         </section>
@@ -423,7 +423,7 @@ export default function DepositDetail() {
   if (!contracts) {
     return (
       <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-10">
-        <NoDeploymentState page="Chi tiết deposit" />
+        <NoDeploymentState page={t("detail.page")} />
       </main>
     );
   }
@@ -439,7 +439,7 @@ export default function DepositDetail() {
           ))}
         </div>
         <div className="skeleton mt-6 h-48 w-full !rounded-2xl" aria-hidden />
-        <span className="sr-only">Đang tải deposit #{depositId}</span>
+        <span className="sr-only">{t("detail.loadingAria", { id: depositId })}</span>
       </main>
     );
   }
@@ -459,33 +459,34 @@ export default function DepositDetail() {
         onClick={() => navigate(-1)}
         className="mt-8 btn btn-outline !py-1.5 !px-3 text-xs inline-flex items-center gap-1 cursor-pointer"
       >
-        <ArrowLeft size={14} /> Trở về
+        <ArrowLeft size={14} /> {t("detail.back")}
       </button>
 
       <section className="mt-4 rounded-2xl border border-line band px-6 py-6">
-        <span className="eyebrow">Chi tiết deposit</span>
+        <span className="eyebrow">{t("detail.eyebrow")}</span>
         <h1 className="mt-3 text-2xl sm:text-3xl font-bold font-display flex items-center gap-3">
-          Deposit #{depositId} <StatusBadge status={d.status} />
+          {t("detail.title")} #{depositId} <StatusBadge status={d.status} />
         </h1>
         <p className="text-sm text-subtle mt-1">
-          Lãi tính theo giây · APR snapshot <strong className="num text-primary">{formatBps(d.aprBpsAtOpen)}</strong> ·
-          penalty <strong className="num text-warn">{formatBps(d.penaltyBpsAtOpen)}</strong> (khóa tại thời điểm mở — admin đổi plan không ảnh hưởng)
+          {t("detail.subApr")} <strong className="num text-primary">{formatBps(d.aprBpsAtOpen)}</strong>{" "}
+          {t("detail.subPenalty")} <strong className="num text-warn">{formatBps(d.penaltyBpsAtOpen)}</strong>{" "}
+          {t("detail.subLocked")}
         </p>
       </section>
 
       {owner && !isOwner && (
         <div className="card border-warn/40 text-warn text-sm mt-4">
-          Chỉ chủ NFT ({owner.slice(0, 10)}…) mới thao tác được — bạn đang dùng {address?.slice(0, 10)}…
+          {t("detail.notOwner", { short: owner.slice(0, 10), you: address?.slice(0, 10) ?? "—" })}
         </div>
       )}
 
       {/* ── Thông tin số liệu ─── */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
-        <InfoBox label="Principal" value={<>{fmtToken(d.principal)} <span className="text-subtle">USDC</span></>} />
-        <InfoBox label="APR khi mở (snapshot)" value={<span className="num text-primary">{formatBps(d.aprBpsAtOpen)}</span>} />
-        <InfoBox label="Kỳ hạn" value={<span className="num">{`${Number(d.tenorDays)} ngày`}</span>} />
+        <InfoBox label={t("detail.boxPrincipal")} value={<>{fmtToken(d.principal)} <span className="text-subtle">USDC</span></>} />
+        <InfoBox label={t("detail.boxApr")} value={<span className="num text-primary">{formatBps(d.aprBpsAtOpen)}</span>} />
+        <InfoBox label={t("detail.boxTenor")} value={<span className="num">{t("detail.days", { d: Number(d.tenorDays) })}</span>} />
         <InfoBox
-          label="Đáo hạn"
+          label={t("detail.boxMaturity")}
           value={
             nowSec > 0 ? (
               <span className="flex items-center gap-2">
@@ -506,7 +507,7 @@ export default function DepositDetail() {
           }
         />
         <InfoBox
-          label={matured ? "Lãi nhận khi rút đúng hạn" : "Lãi dự kiến khi đáo hạn"}
+          label={matured ? t("detail.boxInterestMatured") : t("detail.boxInterestEst")}
           value={
             Number(d.status) === 0 && !matured ? (
               <InterestTicker
@@ -521,12 +522,12 @@ export default function DepositDetail() {
           }
         />
         <InfoBox
-          label="Phạt nếu rút sớm (rate)"
+          label={t("detail.boxPenalty")}
           value={
             <span className="text-warn">
               <span className="num">−{formatBps(d.penaltyBpsAtOpen)}</span>
               <span className="block text-[11px] text-subtle font-normal mt-0.5">
-                ≈ {fmtToken(pv.penalty, 2)} USDC với principal hiện tại
+                {t("detail.penaltyApprox", { amount: fmtToken(pv.penalty, 2) })}
               </span>
             </span>
           }
@@ -539,19 +540,18 @@ export default function DepositDetail() {
         <div className="card mt-3 !py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
-              <h2 className="font-display tracking-wider">Tự động renew</h2>
+              <h2 className="font-display tracking-wider">{t("detail.arHeading")}</h2>
               <p className="text-xs text-subtle mt-1">
-                Bật: khi sổ đáo hạn và hết <span className="num">3 ngày</span> grace, app{" "}
-                <strong className="text-txt">tự gọi renew</strong> toàn bộ principal + lãi ghép theo plan bạn chọn
-                bên dưới. NFT mới được mint — trang tự chuyển sang sổ mới.
+                {t("ar.a")} <span className="num">3</span> {t("ar.b")}{" "}
+                <strong className="text-txt">{t("ar.c")}</strong> {t("ar.d")}
                 {!overGrace && d !== null && (
-                  <> Hẹn: <span className="num text-primary">{fmtDate(Number(d.maturityAt) + GRACE_SECONDS)}</span>.</>
+                  <> {t("ar.scheduled")} <span className="num text-primary">{fmtDate(Number(d.maturityAt) + GRACE_SECONDS)}</span>.</>
                 )}
               </p>
 
               {arOn && (
                 <div className="mt-3">
-                  <span className="eyebrow">Plan sẽ renew vào</span>
+                  <span className="eyebrow">{t("ar.planEyebrow")}</span>
                   <div className="mt-1.5 max-w-md">
                     <RenewPlanSelect
                       plans={plans}
@@ -563,14 +563,14 @@ export default function DepositDetail() {
                     />
                   </div>
                   <p className="text-[11px] text-subtle mt-1.5">
-                    Hover/chọn plan để xem APR · kỳ hạn · phạt rút sớm (mặc định: plan hiện tại).
+                    {t("ar.planHint")}
                   </p>
                 </div>
               )}
 
               {arOn && overGrace && (
                 <p className="text-xs text-ok mt-2" role="status">
-                  Đã đủ điều kiện — app sẽ tự renew ngay (chỉ chạy 1 lần).
+                  {t("ar.ready")}
                 </p>
               )}
             </div>
@@ -580,38 +580,34 @@ export default function DepositDetail() {
               type="button"
               role="switch"
               aria-checked={arOn}
-              aria-label="Tự động renew sau grace"
+              aria-label={t("ar.switchAria")}
               disabled={pending}
               className="shrink-0 cursor-pointer disabled:opacity-50"
               onClick={async () => {
                 if (!arOn) {
                   const ok = await confirm({
-                    title: "Bật tự động renew",
+                    title: t("ar.onTitle"),
                     message: (
                       <>
-                        Khi sổ #{depositId} đáo hạn và hết <span className="num">3 ngày</span> grace, app sẽ{" "}
-                        <strong className="text-ok">tự động gọi renew</strong> toàn bộ principal + lãi ghép theo plan
-                        bạn chọn. NFT mới được mint — trang tự chuyển sang sổ mới.
+                        {t("ar.on1", { id: depositId })} <span className="num">3</span> {t("ar.on2")}{" "}
+                        <strong className="text-ok">{t("ar.on3")}</strong> {t("ar.on4")}
                         <br />
-                        <span className="text-xs text-subtle">
-                          App/tab cần đang mở để chạy (bot off-chain vẫn chạy song song khi node có key).
-                        </span>
+                        <span className="text-xs text-subtle">{t("ar.onNote")}</span>
                       </>
                     ),
-                    okLabel: "Bật tự động renew",
+                    okLabel: t("ar.onOk"),
                   });
                   if (ok) setAr(true, arPlan ?? renewPlan);
                 } else {
                   const ok = await confirm({
-                    title: "Tắt tự động renew",
+                    title: t("ar.offTitle"),
                     message: (
                       <>
-                        Không còn tự renew khi hết grace nữa — bạn phải{" "}
-                        <strong>renew hoặc rút thủ công</strong>.
+                        {t("ar.off1")} <strong>{t("ar.offStrong")}</strong>.
                       </>
                     ),
                     tone: "danger",
-                    okLabel: "Tắt tự động renew",
+                    okLabel: t("ar.offOk"),
                   });
                   if (ok) setAr(false, null);
                 }
@@ -648,36 +644,37 @@ export default function DepositDetail() {
 
       {overGrace && Number(d.status) === ACTIVE && (
         <div className="card mt-4 border-primary/60 bg-primary/10 text-sm">
-          <strong>Quá grace period</strong> (maturity + 3 ngày) — bot sẽ gọi autoRenewDeposit: renewal
-          principal + lãi ghép, APR <strong>giữ nguyên</strong> {formatBps(d.aprBpsAtOpen)} và tenor{" "}
-          {Number(d.tenorDays)} ngày (snapshot).
+          <strong>{t("og.a")}</strong> {t("og.b")} <strong>{t("og.c")}</strong> {formatBps(d.aprBpsAtOpen)}
+          {t("og.d")} {Number(d.tenorDays)} {t("og.e")}
         </div>
       )}
 
       {pendingInterest !== null && pendingInterest > 0n && isOwner && (
         <div className="card mt-4 border-warn/50 flex flex-wrap items-center gap-3">
           <span className="text-sm flex-1">
-            Lãi bị <strong>deferred</strong> (C1 — vault thiếu USDC tại thời điểm rút): đang NỢ bạn{" "}
+            {t("detail.deferred1")} <strong>{t("detail.deferred2")}</strong>{" "}
             <strong className="text-ok">{fmtToken(pendingInterest)} USDC</strong>.
           </span>
           <button
             type="button"
             className="btn btn-cta"
-            onClick={() => contractCall("Claim lãi deferred", async () => (await signerC!.core.claimPendingInterest()) as unknown as ContractTransactionResponse)}
+            onClick={() => contractCall(t("detail.deferredTx"), async () => (await signerC!.core.claimPendingInterest()) as unknown as ContractTransactionResponse)}
             disabled={pending}
           >
-            Claim {fmtToken(pendingInterest, 2)}
+            {t("detail.deferredCta", { amount: fmtToken(pendingInterest, 2) })}
           </button>
         </div>
       )}
 
-      {/* ── Cảnh báo rút sớm — bắt buộc theo T6.10 ─── */}
+      {/* ── Cảnh báo rút sớm ─── */}
       {!matured && !closed && (
         <div className="card mt-4 border-err/50 bg-err/5 text-sm flex items-start gap-2" role="alert">
           <AlertTriangle size={18} className="text-err shrink-0 mt-0.5" />
           <span>
-            Rút sớm trước maturity: mất toàn bộ lãi tích luỹ + phạt {formatBps(d.penaltyBpsAtOpen)} (≈{" "}
-            {fmtToken(pv.penalty, 2)} USDC) → chỉ nhận{" "}
+            {t("detail.earlyWarn", {
+              penalty: formatBps(d.penaltyBpsAtOpen),
+              amount: fmtToken(pv.penalty, 2),
+            })}{" "}
             <strong>{fmtToken(pv.amountIfEarly, 2)} USDC</strong>.
           </span>
         </div>
@@ -685,44 +682,43 @@ export default function DepositDetail() {
 
       {closed && (
         <div className="card mt-4 border-subtle/40 text-subtle text-sm">
-          Sổ đã đóng — <strong className="text-txt">chế độ chỉ xem</strong> (NFT đã burn, không thao tác được). Số
-          liệu trên là snapshot lịch sử.
+          {t("detail.closedNote")} <strong className="text-txt">{t("detail.closedStrong")}</strong> {t("detail.closedTail")}
         </div>
       )}
 
       {/* Kết quả tất toán — thời gian rút, số nhận, lãi/lỗ (phạt), renew → sổ mới */}
       {closed && closedResult && (
         <div className="card mt-4">
-          <span className="eyebrow">Kết quả tất toán</span>
+          <span className="eyebrow">{t("detail.settleEyebrow")}</span>
           <dl className="num mt-3 space-y-2 text-sm">
             {closedResult.at !== null && (
               <div className="flex justify-between gap-4">
-                <dt className="text-subtle">Thời điểm tất toán</dt>
+                <dt className="text-subtle">{t("detail.settleAt")}</dt>
                 <dd>{fmtDate(closedResult.at)}</dd>
               </div>
             )}
             <div className="flex justify-between gap-4">
-              <dt className="text-subtle">Số tiền nhận</dt>
+              <dt className="text-subtle">{t("detail.settleReceived")}</dt>
               <dd>{fmtToken(closedResult.received, 2)} USDC</dd>
             </div>
             {closedResult.interest > 0n && (
               <div className="flex justify-between gap-4">
-                <dt className="text-subtle">Lãi nhận</dt>
+                <dt className="text-subtle">{t("detail.settleInterest")}</dt>
                 <dd className="text-ok">+{fmtToken(closedResult.interest, 4)} USDC</dd>
               </div>
             )}
             {closedResult.penalty > 0n && (
               <div className="flex justify-between gap-4">
-                <dt className="text-subtle">Phạt rút sớm (lỗ)</dt>
+                <dt className="text-subtle">{t("detail.settlePenalty")}</dt>
                 <dd className="text-err">−{fmtToken(closedResult.penalty, 2)} USDC</dd>
               </div>
             )}
             {closedResult.newId !== null && (
               <div className="flex justify-between gap-4">
-                <dt className="text-subtle">Tái ký thành sổ mới</dt>
+                <dt className="text-subtle">{t("detail.settleRenewed")}</dt>
                 <dd>
                   <Link to={`/deposit/${closedResult.newId}`} className="text-secondary hover:underline">
-                    Sổ #{closedResult.newId} →
+                    {t("detail.settleLink", { id: closedResult.newId })}
                   </Link>
                 </dd>
               </div>
@@ -733,33 +729,33 @@ export default function DepositDetail() {
 
       {paused && !closed && !emergencyUnlocked && pauseAt !== null && (
         <div className="text-xs text-warn mt-3">
-          Hệ thống đang pause — write bị chặn. Emergency (C5) unlock sau{" "}
-          {Math.max(0, Math.ceil((pauseAt + EMERGENCY_DELAY_SECONDS - nowSec) / 3600))} giờ.
+          {t("detail.pauseNote")}{" "}
+          {Math.max(0, Math.ceil((pauseAt + EMERGENCY_DELAY_SECONDS - nowSec) / 3600))} {t("detail.pauseHours")}
         </div>
       )}
 
       {/* ── Actions ─── */}
       {isOwner && !closed && (
         <div className="card mt-6">
-          <h2 className="font-display tracking-wider mb-3">Thao tác</h2>
+          <h2 className="font-display tracking-wider mb-3">{t("detail.actions")}</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="op-amount">Số lượng (cho Rút một phần / Top-up)</label>
+              <label htmlFor="op-amount">{t("detail.opAmountLabel")}</label>
               <input
                 id="op-amount"
                 className="field num"
                 inputMode="decimal"
-                placeholder="VD: 1000"
+                placeholder={t("detail.opPh")}
                 value={inputAmount}
                 onChange={(e) => setInputAmount(e.target.value)}
               />
               <p className="text-xs text-subtle mt-1">
-                Top-up không bị giới hạn min/max của plan — chỉ cap MAX_PRINCIPAL hợp đồng.
+                {t("detail.topupNote")}
               </p>
             </div>
             <div>
-              <label htmlFor="renew-plan">Plan cho Renew</label>
+              <label htmlFor="renew-plan">{t("detail.renewPlanLabel")}</label>
               <RenewPlanSelect
                 plans={plans}
                 currentPlanId={d !== null ? Number(d.planId) : 0}
@@ -768,7 +764,7 @@ export default function DepositDetail() {
                 disabled={pending}
                 plansLoading={plansLoading}
               />
-              <p className="text-xs text-subtle mt-1">Renew chỉ vào plan enabled — ngược lại revert SC_PlanNotEnabled.</p>
+              <p className="text-xs text-subtle mt-1">{t("detail.renewNote")}</p>
             </div>
           </div>
 
@@ -779,10 +775,10 @@ export default function DepositDetail() {
                 className="btn btn-cta"
                 disabled={pending}
                 onClick={() =>
-                  withdrawCall("Rút đủ hạn", async () => (await signerC!.core.withdrawAtMaturity(depositId!)) as unknown as ContractTransactionResponse)
+                  withdrawCall(t("detail.txWithdrawFull"), async () => (await signerC!.core.withdrawAtMaturity(depositId!)) as unknown as ContractTransactionResponse)
                 }
               >
-                Rút full (+{fmtToken(pv.interest, 2)} lãi)
+                {t("detail.btnWithdrawFull", { interest: fmtToken(pv.interest, 2) })}
               </button>
             )}
             {!matured && (
@@ -792,27 +788,29 @@ export default function DepositDetail() {
                 disabled={pending}
                 onClick={async () => {
                   const ok = await confirm({
-                    title: "Rút sớm",
+                    title: t("detail.earlyTitle"),
                     message: (
                       <>
-                        Rút <strong className="num">{fmtToken(pv.principal, 2)} USDC</strong> trước maturity
-                        (maturing còn <strong>{Number(d.maturityAt) > nowSec ? Math.ceil((Number(d.maturityAt) - nowSec) / 86400) : 0} ngày</strong>):
-                        mất toàn bộ lãi tích luỹ (<span className="num text-ok">−{fmtToken(pv.interest, 4)}</span>) +{" "}
-                        <strong className="num text-warn">phạt {formatBps(d.penaltyBpsAtOpen)}</strong> (
-                        ≈{fmtToken(pv.penalty, 2)} USDC).
+                        {t("detail.earlyMsg", {
+                          principal: fmtToken(pv.principal, 2),
+                          days: Number(d.maturityAt) > nowSec ? Math.ceil((Number(d.maturityAt) - nowSec) / 86400) : 0,
+                          interest: fmtToken(pv.interest, 4),
+                          penalty: formatBps(d.penaltyBpsAtOpen),
+                          approx: fmtToken(pv.penalty, 2),
+                        })}
                         <br />
-                        Nhận ngay: <strong className="num">{fmtToken(pv.amountIfEarly, 2)} USDC</strong>.
+                        {t("detail.earlyReceive", { amount: fmtToken(pv.amountIfEarly, 2) })}
                       </>
                     ),
                     tone: "danger",
-                    okLabel: "Đồng ý rút sớm",
+                    okLabel: t("detail.earlyOk"),
                   });
                   if (ok) {
-                    withdrawCall("Rút sớm", async () => (await signerC!.core.earlyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
+                    withdrawCall(t("detail.txEarly"), async () => (await signerC!.core.earlyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
                   }
                 }}
               >
-                Rút sớm (−{formatBps(d.penaltyBpsAtOpen)} penalty)
+                {t("detail.btnEarly", { penalty: formatBps(d.penaltyBpsAtOpen) })}
               </button>
             )}
 
@@ -821,24 +819,25 @@ export default function DepositDetail() {
                 type="button"
                 className="btn btn-outline"
                 disabled={pending || amount === null || amount === 0n || amount >= d.principal}
-                title={amount === null ? "Nhập số lượng ở trên" : amount >= d.principal ? "Phải < principal" : ""}
+                title={
+                  amount === null
+                    ? t("detail.needAmount")
+                    : amount >= d.principal
+                      ? t("detail.ltPrincipal")
+                      : ""
+                }
                 onClick={async () => {
                   const ok = await confirm({
-                    title: "Rút một phần",
-                    message: (
-                      <>
-                        Rút <strong className="num">{fmtToken(amount!)} USDC</strong> khỏi deposit&nbsp;#{depositId}.
-                        Lãi của phần gốc rút được tính weighted (C3); phần còn lại tiếp tục tích lãi đến maturity.
-                      </>
-                    ),
-                    okLabel: "Rút một phần",
+                    title: t("detail.partialTitle"),
+                    message: t("detail.partialMsg", { amount: fmtToken(amount!), id: depositId }),
+                    okLabel: t("detail.partialOk"),
                   });
                   if (ok) {
-                    contractCall("Rút một phần", async () => (await signerC!.core.partialEarlyWithdraw(depositId!, amount!)) as unknown as ContractTransactionResponse);
+                    contractCall(t("detail.txPartial"), async () => (await signerC!.core.partialEarlyWithdraw(depositId!, amount!)) as unknown as ContractTransactionResponse);
                   }
                 }}
               >
-                Rút một phần
+                {t("detail.btnPartial")}
               </button>
             )}
 
@@ -850,37 +849,31 @@ export default function DepositDetail() {
                   disabled={pending || amount === null || amount === 0n}
                   onClick={async () => {
                     const ok = await confirm({
-                      title: "Nạp thêm (top-up) vào deposit",
-                      message: (
-                        <>
-                          Gửi thêm <strong className="num">{fmtToken(amount!)} USDC</strong> vào deposit #{depositId} —
-                          hợp nhất vào principal, lãi tiếp tục tính trên số mới đến maturity (APR/tenor snapshot
-                          giữ nguyên).
-                        </>
-                      ),
-                      okLabel: "Top-up",
+                      title: t("detail.topupTitle"),
+                      message: t("detail.topupMsg", { amount: fmtToken(amount!), id: depositId }),
+                      okLabel: t("detail.topupOk"),
                     });
                     if (ok) {
-                      contractCall("Top-up", async () => (await signerC!.core.topUpDeposit(depositId!, amount!)) as unknown as ContractTransactionResponse);
+                      contractCall(t("detail.txTopup"), async () => (await signerC!.core.topUpDeposit(depositId!, amount!)) as unknown as ContractTransactionResponse);
                     }
                   }}
                 >
-                  Top-up {amount !== null ? fmtToken(amount, 2) : ""}
+                  {t("detail.btnTopup", { amount: amount !== null ? fmtToken(amount, 2) : "" })}
                 </button>
               ) : (
                 <button
                   type="button"
                   className="btn btn-outline"
                   disabled={pending || amount === null || amount === 0n}
-                  title="Bước 1: Approve — cho phép hợp đồng rút USDC từ ví vào vault khi bạn nạp thêm. ERC-20 bắt buộc bước này trước top-up; chỉ cần làm 1 lần cho số tiền đó."
+                  title={t("detail.approveTopupTitle")}
                   onClick={() => {
                     if (!signerC) return;
-                    contractCall("Approve USDC (top-up)", async () =>
+                    contractCall(t("detail.txApprove"), async () =>
                       (await signerC.usdc.approve(signerC.savingCoreAddress, amount!)) as unknown as ContractTransactionResponse,
                     );
                   }}
                 >
-                  1. Approve ({amount !== null ? fmtToken(amount, 2) : ""} USDC)
+                  {t("detail.btnApprove", { amount: amount !== null ? fmtToken(amount, 2) : "" })}
                 </button>
               ))}
 
@@ -889,44 +882,46 @@ export default function DepositDetail() {
                 type="button"
                 className="btn btn-outline"
                 disabled={pending || renewPlan === null}
-                title="Renew: tái ký hết kỳ — toàn bộ principal + lãi ghép thành 1 kỳ hạn mới theo plan đã chọn."
+                title={t("detail.renewHint")}
                 onClick={async () => {
                   if (renewPlan === null) return;
                   const target = plans.find((p) => p.id === renewPlan) ?? null;
                   const keep = renewPlan === Number(d.planId);
                   const ok = await confirm({
-                    title: "Renew (tái gửi tiết kiệm)",
+                    title: t("detail.renewTitle"),
                     message: (
                       <>
-                        Principal + lãi ghép chuyển thành kỳ hạn mới theo{" "}
-                        <strong>{keep ? "plan hiện tại" : `Plan #${renewPlan}`}</strong>
+                        {t("detail.renew1")}{" "}
+                        <strong>{keep ? t("detail.renewCurrent") : t("detail.renewTarget", { id: renewPlan })}</strong>
                         {target && !keep && (
                           <>
                             {" "}
-                            — APR <span className="num">{formatBps(target.aprBps)}</span>, kỳ hạn{" "}
-                            <span className="num">{Number(target.tenorDays)} ngày</span>, phạt rút sớm{" "}
-                            <span className="num text-warn">{formatBps(target.earlyWithdrawPenaltyBps)}</span>
+                            {t("detail.renewSpec", {
+                              apr: formatBps(target.aprBps),
+                              days: Number(target.tenorDays),
+                              penalty: formatBps(target.earlyWithdrawPenaltyBps),
+                            })}
                           </>
                         )}
-                        . NFT nhận status AutoRenewed.
+                        {t("detail.renewTail")}
                       </>
                     ),
-                    okLabel: "Renew ngay",
+                    okLabel: t("detail.renewOk"),
                   });
                   if (ok) {
-                    contractCall("Renew", async () =>
+                    contractCall(t("detail.txRenew"), async () =>
                       (await signerC!.core.renewDeposit(depositId!, renewPlan ?? Number(d.planId))) as unknown as ContractTransactionResponse,
                     );
                   }
                 }}
               >
-                Renew
+                {t("detail.btnRenew")}
               </button>
             )}
 
             {paused && !emergencyUnlocked && (
-              <button type="button" className="btn btn-danger cursor-not-allowed" disabled title="Cần pause ≥ 7 ngày (C5)">
-                Emergency (khóa)
+              <button type="button" className="btn btn-danger cursor-not-allowed" disabled title={t("detail.emergencyLockTitle")}>
+                {t("detail.btnEmergencyLocked")}
               </button>
             )}
             {emergencyUnlocked && (
@@ -936,24 +931,24 @@ export default function DepositDetail() {
                 disabled={pending}
                 onClick={async () => {
                   const ok = await confirm({
-                    title: "Emergency Withdraw (C5)",
-                    message: "Rút khi hệ thống pause ≥ 7 ngày: nhận principal, không có lãi và không bị phạt.",
+                    title: t("detail.emergencyTitle"),
+                    message: t("detail.emergencyMsg"),
                     tone: "danger",
-                    okLabel: "Emergency withdraw",
+                    okLabel: t("detail.emergencyOk"),
                   });
                   if (ok) {
-                    withdrawCall("Emergency withdraw", async () => (await signerC!.core.emergencyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
+                    withdrawCall(t("detail.txEmergency"), async () => (await signerC!.core.emergencyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
                   }
                 }}
               >
-                Emergency Withdraw (C5)
+                {t("detail.btnEmergency")}
               </button>
             )}
           </div>
 
           {pending && (
             <p className="text-xs text-subtle mt-3 inline-flex items-center gap-1" aria-live="polite">
-              <Loader2 size={13} className="animate-spin" /> Đợi xác nhận giao dịch… (toast hiển thị tx hash)
+              <Loader2 size={13} className="animate-spin" /> {t("detail.waitingTx")}
             </p>
           )}
           {state.status === "error" && (
@@ -964,9 +959,9 @@ export default function DepositDetail() {
         </div>
       )}
 
-      {/* Debug footer — các field snapshot helpful cho demo */}
+      {/* Debug footer — các field snapshot hữu ích cho demo */}
       <details className="mt-6 text-xs text-subtle">
-        <summary className="cursor-pointer">Chi tiết kỹ thuật (snapshot từ contract)</summary>
+        <summary className="cursor-pointer">{t("detail.debugSummary")}</summary>
         <ul className="mt-2 space-y-1 font-mono">
           <li>planId: {Number(d.planId)} · penaltyBps snapshot: {Number(d.penaltyBpsAtOpen)} bps</li>
           <li>startAt → maturityAt: {fmtDate(Number(pv.maturityAt) - Number(d.tenorDays) * 86400)} → {fmtDate(Number(pv.maturityAt))}</li>

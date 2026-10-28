@@ -4,6 +4,7 @@
  *   + ToastProvider (arí live status tx) + Navbar + NetworkGuard
  */
 import { HashRouter, Routes, Route, Link, Navigate } from "react-router-dom";
+import { LangProvider, useLang } from "@/lib/i18n";
 import { WalletProvider } from "@/providers/WalletProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
@@ -27,13 +28,14 @@ import WalletPicker from "@/components/WalletPicker";
 function AdminGuard({ children }: { children: ReactNode }) {
   const { address } = useWallet();
   const { decided, isAdmin } = useAdminRole();
+  const { t } = useLang();
   if (!decided) {
     return (
       <main
         role="status"
         className="mx-auto w-full max-w-[1680px] px-4 py-24 text-center text-subtle"
       >
-        Đang kiểm tra quyền admin…
+        {t("app.adminChecking")}
       </main>
     );
   }
@@ -43,7 +45,8 @@ function AdminGuard({ children }: { children: ReactNode }) {
 
 export default function App() {
   return (
-    <WalletProvider>
+    <LangProvider>
+      <WalletProvider>
       <ToastProvider>
         <ConfirmProvider>
         <ContractsProvider>
@@ -71,9 +74,7 @@ export default function App() {
                 className="mt-10 border-t border-line bg-bg py-10 text-center text-xs text-muted pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(2.5rem+env(safe-area-inset-bottom,2rem))]"
               >
               <p className="text-txt font-semibold">Bank Deposit DApp</p>
-              <p className="mt-1">
-                AT190234 · USDC 6 decimals · grace 3 ngày · APR 300 bps · penalty 450 bps
-              </p>
+              <p className="mt-1"><FooterTagline /></p>
                 </footer>
               </div>
             </HashRouter>
@@ -81,15 +82,22 @@ export default function App() {
         </ConfirmProvider>
       </ToastProvider>
     </WalletProvider>
+    </LangProvider>
   );
 }
 
+function FooterTagline() {
+  const { t } = useLang();
+  return <>{t("footer.tagline")}</>;
+}
+
 function NotFound() {
+  const { t } = useLang();
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 py-16 text-center text-subtle">
-      Trang không tồn tại —{" "}
+      {t("app.notFound")}{" "}
       <Link to="/" className="underline underline-offset-4 text-secondary cursor-pointer hover:text-primary transition-colors duration-200">
-        về trang chủ
+        {t("app.notFoundLink")}
       </Link>
       .
     </main>

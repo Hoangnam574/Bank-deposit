@@ -10,9 +10,11 @@ import { Check } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
 import { ChainPill, ALLOWED_CHAINS, CHAIN_LABEL } from "@/components/NetworkGuard";
 import HardhatKeyImport from "@/components/HardhatKeyImport";
+import { useLang } from "@/lib/i18n";
 
 export default function NetworkMenu({ compact }: { compact?: boolean }) {
   const { chainId } = useWallet();
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -28,8 +30,8 @@ export default function NetworkMenu({ compact }: { compact?: boolean }) {
     <>
       <button
         type="button"
-        title="Bấm để chọn mạng (network)"
-        aria-label="Chọn mạng"
+        title={t("chain.pillHint")}
+        aria-label={t("chain.pillAria")}
         onClick={() => setOpen(true)}
         className="cursor-pointer rounded-full hover:outline hover:outline-1 hover:outline-primary/50"
       >
@@ -43,6 +45,7 @@ export default function NetworkMenu({ compact }: { compact?: boolean }) {
 
 function NetworkModal({ onClose }: { onClose: () => void }) {
   const { chainId, switchNetwork } = useWallet();
+  const { t } = useLang();
   const [busy, setBusy] = useState<number | null>(null);
 
   const choose = async (c: number) => {
@@ -70,15 +73,15 @@ function NetworkModal({ onClose }: { onClose: () => void }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Chọn mạng"
+        aria-label={t("chain.modalAria")}
         className="card w-full max-w-md max-h-[85vh] overflow-y-auto !p-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-line px-5 py-3.5">
-          <span className="eyebrow !text-muted">Network</span>
-          <h2 className="mt-1.5 text-base font-display font-semibold">Chọn mạng của bạn</h2>
+          <span className="eyebrow !text-muted">{t("chain.modalEyebrow")}</span>
+          <h2 className="mt-1.5 text-base font-display font-semibold">{t("chain.modalTitle")}</h2>
           <p className="text-xs text-subtle mt-1">
-            MetaMask sẽ hiện popup xác nhận sau khi bạn chọn.
+            {t("chain.modalHint")}
           </p>
         </div>
         <div className="p-3">
@@ -99,13 +102,13 @@ function NetworkModal({ onClose }: { onClose: () => void }) {
                 <span className="text-xs text-subtle num">· {c}</span>
                 <span className="ml-auto text-xs" aria-live="polite">
                   {busy === c ? (
-                    <span className="text-subtle">Đang chuyển…</span>
+                    <span className="text-subtle">{t("chain.switching")}</span>
                   ) : current ? (
                     <span className="inline-flex items-center gap-1 text-ok">
-                      <Check size={13} /> Đang dùng
+                      <Check size={13} /> {t("chain.current")}
                     </span>
                   ) : (
-                    <span className="text-muted">Chuyển →</span>
+                    <span className="text-muted">{t("chain.switch")}</span>
                   )}
                 </span>
               </button>

@@ -6,6 +6,7 @@
  * dữ liệu contract (getVaultBalance + totalOwedInterest) — không tự suy đoán.
  */
 import { fmtToken } from "@/lib/format";
+import { useLang, type TKey } from "@/lib/i18n";
 
 /* Palette theo token DESIGN.md — giữ đúng phẳng (flat), không glow/gradient */
 const OK = "#0ecb81";
@@ -28,16 +29,20 @@ interface GaugeState {
   sub: string;
 }
 
-function stateOf(balance: bigint | null, owed: bigint | null): GaugeState {
+function stateOf(
+  balance: bigint | null,
+  owed: bigint | null,
+  t: (k: TKey) => string,
+): GaugeState {
   if (balance === null || owed === null) {
-    return { pct: 0, color: TRACK, label: "…", sub: "Đang đọc dữ liệu vault" };
+    return { pct: 0, color: TRACK, label: "…", sub: t("gauge.reading") };
   }
   if (balance === 0n) {
     return {
       pct: 0,
       color: ERR,
       label: "0%",
-      sub: "Vault trống — nạp vốn (fundVault) để mở hệ thống",
+      sub: t("gauge.empty"),
     };
   }
   const available = balance - owed;
@@ -47,30 +52,31 @@ function stateOf(balance: bigint | null, owed: bigint | null): GaugeState {
       pct: 0,
       color: ERR,
       label: "0%",
-      sub: "Insolvency risk — rút/trả lãi sẽ revert VM_Insolvent (C2)",
+      sub: t("gauge.insolvent"),
     };
   }
   if (pct >= 60) {
-    return { pct, color: OK, label: `${pct}%`, sub: "Khoẻ — đủ trả cả gốc cam kết lẫn lãi" };
+    return { pct, color: OK, label: `${pct}%`, sub: t("gauge.healthy") };
   }
   if (pct >= 30) {
     return {
       pct,
       color: WARN,
       label: `${pct}%`,
-      sub: "Cận thanh khoản — cân nhắc fund thêm trước đợt rút",
+      sub: t("gauge.tight"),
     };
   }
   return {
     pct,
     color: ERR,
     label: `${pct}%`,
-    sub: "Thanh khoản mỏng — gần ngưỡng VM_Insolvent (C2)",
+    sub: t("gauge.thin"),
   };
 }
 
 export default function VaultHealthGauge({ balance, owed }: Props) {
-  const s = stateOf(balance, owed);
+  const { t } = useLang();
+  const s = stateOf(balance, owed, t);
   const available = balance !== null && owed !== null ? balance - owed : null;
   /* strokeDashoffset theo chiều dương — pct cao = cung phủ gần hết */
   const offset = ARC_LEN * (1 - s.pct / 100);
@@ -83,7 +89,7 @@ export default function VaultHealthGauge({ balance, owed }: Props) {
         height="100"
         viewBox="0 0 200 104"
         role="img"
-        aria-label={`Sức khoẻ thanh khoản vault: ${s.label}`}
+        aria-label={t("gauge.aria", { label: s.label })}
       >
         <path
           d="M 20 96 A 80 80 0 0 1 180 96"
@@ -124,15 +130,15 @@ export default function VaultHealthGauge({ balance, owed }: Props) {
         {/* 3 số liệu gốc — đúng nguồn contract, không phóng đại */}
         <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
           <div>
-            <dt className="text-xs text-subtle">Balance (thực)</dt>
+            <dt className="text-xs text-subtle">{t("gauge.balance")}</dt>
             <dd className="num mt-0.5">{balance !== null ? fmtToken(balance, 2) : "…"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-subtle">Owed (cam kết lãi)</dt>
+            <dt className="text-xs text-subtle">{t("gauge.owed")}</dt>
             <dd className="num mt-0.5 text-warn">{owed !== null ? fmtToken(owed, 2) : "…"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-subtle">Available</dt>
+            <dt className="text-xs text-subtle">{t("gauge.available")}</dt>
             <dd
               className={`num mt-0.5 ${
                 available !== null && available < 0n ? "text-err" : "text-ok"
@@ -143,9 +149,8 @@ export default function VaultHealthGauge({ balance, owed }: Props) {
           </div>
         </dl>
         <p className="text-xs text-subtle mt-3">
-          health = available ÷ balance. Vault giữ <strong className="num">100% vốn gốc deposit Active</strong>.{" "}
-          <code>VM_Insolvent</code> (C2) chặn mọi rút/trả lãi khi available ≤ 0 — gauge đỏ nghĩa là
-          vault không đủ tiền cam kết, không phải mất tiền.
+          {t("gauge.note")} <strong className="num">{t("gauge.noteStrong")}</strong>.{" "}
+          {t("gauge.note2")}
         </p>
       </div>
     </div>
