@@ -1,17 +1,22 @@
 /**
- * OpenDeposit "/open" (T6.8) — chọn plan → nhập amount (parseUnits _,6)
- * → preview lãi + ngày đáo hạn → approve (bước 1) → openDeposit (bước 2).
- * Disable nếu amount ngoài [min, max], plan disabled, hoặc chưa connect.
+ * OpenDeposit "/open" (T6.8) — chọn plan → nhập amount (parseUnits 6)
+ * → preview lãi + ngày đáo hạn → 1 nút "Mở tiết kiệm":
+ *   - chưa đủ allowance → dialog "Cần Approve USDC" (mô tả ERC-20) → approve
+ *     mined → TỰ ĐỘNG gọi openDeposit ngay sau đó (1 lần bấm, 2 popup MM);
+ *   - đã đủ allowance → mở luôn.
+ * Mined ok → dialog thành công 2 lựa chọn: "Xem sổ" (/deposit/:id) hoặc
+ * "Về trang chủ" (/). Parse event DepositOpened để lấy depositId mới.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import PlanCard, { type PlanRow } from "@/components/PlanCard";
 import { usePlans } from "@/hooks/usePlans";
 import { useWallet } from "@/providers/WalletProvider";
 import { useSignerContracts } from "@/providers/ContractsProvider";
 import { useTx } from "@/hooks/useTx";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   fmtToken,
   parseToken,
@@ -20,16 +25,15 @@ import {
   formatBps,
   SCALAR,
 } from "@/lib/format";
-import { useEffect } from "react";
 
 export default function OpenDeposit() {
   const { plans, loading, error } = usePlans();
   const { address } = useWallet();
   const signerC = useSignerContracts();
   const { run, state } = useTx();
+  const confirm = useConfirm();
   const [selected, setSelected] = useState<number | null>(null);
   const [amountStr, setAmountStr] = useState("");
-  const [allowanceReady, setAllowanceReady] = useState(false);
   const [balance, setBalance] = useState<bigint | null>(null);
   const navigate = useNavigate();
 
@@ -52,7 +56,7 @@ export default function OpenDeposit() {
     if (rec) setSelected(rec.id);
   }, [plans, selected]);
 
-  /* Đọc allowance + balance mỗi khi plan/amount/address đổi */
+  /* Đọc balance mỗi khi amount/address đổi (refresh sau tx qua state.status) */
   useEffect(() => {
     if (!signerC || !address) return;
     let cancelled = false;
@@ -67,25 +71,7 @@ export default function OpenDeposit() {
     return () => {
       cancelled = true;
     };
-  }, [signerC, address, amountStr]);
-
-  /* Acceptance của approve: chỉ refill đúng amount → step 2 mở */
-  useEffect(() => {
-    if (!signerC || !amount || amount === 0n) {
-      setAllowanceReady(false);
-      return;
-    }
-    let cancelled = false;
-    void signerC.usdc
-      .allowance(address, signerC.savingCoreAddress)
-      .then((a) => {
-        if (!cancelled) setAllowanceReady((a as bigint) >= amount);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [signerC, address, amount, state.status]);
+  }, [signerC, address, amountStr, state.status]);
 
   /* ── Validation ── */
   const gpAmount = amount ?? 0n;
@@ -110,24 +96,78 @@ export default function OpenDeposit() {
               ? `Số dư chỉ ${fmtToken(balance)} USDC`
               : "";
 
-  const approve = () => {
-    void run("Approve USDC", async () => {
-      if (!signerC || !amount) throw new Error("Thiếu plan/amount");
-      const coreAddr = signerC.savingCoreAddress;
-      const tx = (await signerC.usdc.approve(coreAddr, amount)) as unknown as ContractTransactionResponse;
-      return tx;
-    });
-  };
+  /* ── MỞ SỔ — 1 lần bấm: approve (nếu cần) → openDeposit → dialog thành công ── */
+  const openDeposit = async (): Promise<void> => {
+    if (!signerC || !plan || !amount || !address) return;
+    const coreAddr = signerC.savingCoreAddress;
 
-  const openDeposit = () => {
-    void run("Mở tiết kiệm", async () => {
-      if (!signerC || !plan || !amount) throw new Error("Thiếu plan/amount");
+    /* Đọc allowance MỚI ngay lúc bấm (state cũ có thể stale) */
+    let allow = 0n;
+    try {
+      allow = (await signerC.usdc.allowance(address, coreAddr)) as bigint;
+    } catch {
+      /* đọc lỗi → coi như chưa đủ, hiện dialog approve */
+    }
+
+    if (allow < amount) {
+      const ok = await confirm({
+        title: "Cần Approve USDC",
+        message: (
+          <>
+            ERC-20 bắt buộc: <strong>approve</strong> — cho phép hợp đồng rút{" "}
+            <strong className="num">{fmtToken(amount, 2)} USDC</strong> từ ví của bạn để mở sổ.
+            <br />
+            Sẽ có <strong>2 popup MetaMask liên tiếp</strong>: (1) Approve → (2) Mở sổ. Chỉ cần
+            approve lại khi số tiền vượt hạn mức còn dư.
+          </>
+        ),
+        okLabel: "Approve & Mở tiết kiệm",
+      });
+      if (!ok) return;
+    }
+
+    const iface = signerC.core.interface;
+    let newId: number | null = null;
+    const hash = await run("Mở tiết kiệm", async () => {
+      /* Bước 1 (khi cần): approve — mined xong mới sang bước 2 */
+      if (allow < amount) {
+        const atx = (await signerC.usdc.approve(coreAddr, amount)) as unknown as ContractTransactionResponse;
+        await atx.wait();
+      }
+      /* Bước 2: mở sổ + parse event DepositOpened để lấy id mới */
       const tx = (await signerC.core.openDeposit(plan.id, amount)) as unknown as ContractTransactionResponse;
+      const receipt = await tx.wait();
+      for (const log of receipt?.logs ?? []) {
+        try {
+          const desc = iface.parseLog({ topics: log.topics as string[], data: log.data });
+          if (desc?.name === "DepositOpened") newId = Number((desc.args as unknown[])[0]);
+        } catch {
+          /* log của contract khác — bỏ qua */
+        }
+      }
       return tx;
     });
-  };
 
-  void navigate; // (dùng ở "tương lai" chuyển detail sau khi mined ok — optional)
+    if (!hash || newId === null || newId <= 0) return;
+
+    /* ── Dialog thành công — 2 lựa chọn (Esc/click nền = về trang chủ) ── */
+    const goDetail = await confirm({
+      title: "Mở sổ thành công",
+      message: (
+        <>
+          Sổ <strong className="num">#{newId}</strong> đã mở:{" "}
+          <strong className="num">{fmtToken(amount, 2)} USDC</strong> ·{" "}
+          <span className="num">{Number(plan.tenorDays)} ngày</span> · APR{" "}
+          <span className="num text-primary">{formatBps(plan.aprBps)}</span> · đáo hạn (ước lượng){" "}
+          <span className="num">{fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * 86_400)}</span>.
+        </>
+      ),
+      okLabel: "Xem sổ",
+      cancelLabel: "Về trang chủ",
+    });
+    if (goDetail) navigate(`/deposit/${newId}`);
+    else navigate("/");
+  };
 
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
@@ -191,53 +231,22 @@ export default function OpenDeposit() {
             </p>
           )}
 
-          {/* Step indicator: 1 Approve → 2 Mở */}
-          <ol className="mt-5 flex items-center gap-2 text-xs" aria-label="Các bước">
-            {["1 · Approve USDC", "2 · Mở tiết kiệm"].map((label, i) => {
-              const done = i === 0 ? allowanceReady : false;
-              const current = allowanceReady ? i === 1 : i === 0;
-              return (
-                <li
-                  key={label}
-                  className={`rounded-full border px-3 py-1.5 cursor-default flex items-center gap-1.5 transition-colors duration-200 ${
-                    done
-                      ? "border-ok/50 bg-ok/10 text-ok"
-                      : current
-                        ? "border-cta/60 bg-cta/10 text-cta"
-                        : "border-line text-subtle"
-                  }`}
-                >
-                  {done && <CheckCircle2 size={12} />}
-                  {label}
-                </li>
-              );
-            })}
-          </ol>
-
+          {/* Một nút duy nhất — approve (nếu cần) tự chạy trong cùng lần bấm */}
           <div className="mt-5 flex flex-wrap gap-3 justify-end">
-            {allowanceReady ? (
-              <span className="inline-flex items-center gap-1 text-xs text-ok self-center">
-                <CheckCircle2 size={14} /> Đã approve (allowance đủ)
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={approve}
-                disabled={!valid || amount === null || state.status === "pending"}
-              >
-                {state.status === "pending" ? <Loader2 className="animate-spin" size={16} /> : null} Approve
-              </button>
-            )}
             <button
               type="button"
               className="btn btn-cta"
-              onClick={openDeposit}
-              disabled={!valid || !allowanceReady || state.status === "pending"}
+              onClick={() => void openDeposit()}
+              disabled={!valid || state.status === "pending"}
             >
               {state.status === "pending" ? <Loader2 className="animate-spin" size={16} /> : null} Mở tiết kiệm
             </button>
           </div>
+          <p className="text-[11px] text-subtle mt-2 text-right">
+            {state.status === "pending"
+              ? "Đang xử lý — nếu có, approve hiện trước rồi tự mở sổ (2 popup MetaMask)."
+              : "Bấm 1 lần: cần approve thì hiện dialog trước, xong tự mở sổ."}
+          </p>
         </section>
 
         {/* Sticky summary */}

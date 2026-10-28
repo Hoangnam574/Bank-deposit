@@ -1,11 +1,12 @@
 /**
- * StatusBadge — trạng thái deposit (`DepositInfo.status`):
- *   0 Active → xanh lá; 1 Withdrawn; 2 EarlyWithdrawn; 3 AutoRenewed — xám.
+ * StatusBadge — trạng thái deposit (`DepositInfo.status` — enum 4 giá trị:
+ * Active / Withdrawn / ManualRenewed / AutoRenewed; rút sớm vẫn là Withdrawn):
+ *   0 Active → xanh lá; 1 Đã rút; 2 Đã Renew (thủ công); 3 Tự động Renew.
  */
 const META: Record<number, { label: string; cls: string }> = {
   0: { label: "Active", cls: "bg-ok/15 text-ok border-ok/40" },
   1: { label: "Đã rút", cls: "bg-subtle/15 text-subtle border-subtle/40" },
-  2: { label: "Rút sớm", cls: "bg-warn/15 text-warn border-warn/40" },
+  2: { label: "Đã Renew", cls: "bg-secondary/15 text-secondary border-secondary/40" },
   3: { label: "Tự động Renew", cls: "bg-secondary/15 text-secondary border-secondary/40" },
 };
 

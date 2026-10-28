@@ -8,10 +8,10 @@
  *   - có pending lãi NỢ (C1 defer) → Claim Pending
  * Mọi action có confirm (ConfirmDialog in-app) + map lỗi thân thiện.
  */
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Loader2, SearchX, CheckCircle2 } from "lucide-react";
-import type { ContractTransactionResponse } from "ethers";
+import type { ContractTransactionResponse, EventLog } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
 import MaturityRing from "@/components/MaturityRing";
@@ -50,6 +50,15 @@ interface Preview {
   status: bigint;
 }
 
+/** Kết quả tất toán của sổ đã đóng — dựng từ event log (NFT đã burn) */
+interface ClosedResult {
+  at: number | null;
+  received: bigint;
+  interest: bigint;
+  penalty: bigint;
+  newId: number | null;
+}
+
 function parseInput(input: string): bigint {
   if (!/^[0-9]+(\.[0-9]+)?$/.test(input)) throw new Error("Số tiền không hợp lệ");
   const [int, frac = ""] = input.split(".");
@@ -63,7 +72,7 @@ export default function DepositDetail() {
   const navigate = useNavigate();
   const { contracts, hasDeployment } = useContracts();
   const signerC = useSignerContracts();
-  const { address, getBrowser } = useWallet();
+  const { address, getBrowser, chainId } = useWallet();
   const { state, run } = useTx();
   const confirm = useConfirm();
 
@@ -77,9 +86,17 @@ export default function DepositDetail() {
   const [notFound, setNotFound] = useState(false);
   const [withdrawnOk, setWithdrawnOk] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [closedResult, setClosedResult] = useState<ClosedResult | null>(null);
 
   const [inputAmount, setInputAmount] = useState("");
   const [renewPlan, setRenewPlan] = useState<number | null>(null);
+
+  /* Nút gạt "Tự động renew" — preference lưu localStorage (contract không có chỗ
+     lưu ý định, không đụng contracts/tests). Key theo chain + ví + depositId
+     để không nhầm lẫn giữa mạng/tài khoản/sổ khác nhau. */
+  const [arOn, setArOn] = useState(false);
+  const [arPlan, setArPlan] = useState<number | null>(null);
+  const arFiredRef = useRef(false);
 
   const amount = useMemo(() => {
     try {
@@ -113,7 +130,15 @@ export default function DepositDetail() {
         const block = await getBrowser()?.getBlock("latest");
         if (!cancelled && block) setNowSec(Number(block.timestamp));
         const raw = (await contracts.core.getDeposit(depositId)) as unknown[];
-        const own = String(await contracts.core.ownerOf(depositId)).toLowerCase();
+        /* ownerOf revert với NFT đã burn (sổ đóng) — KHÔNG phải notFound:
+           contract giữ nguyên DepositInfo (chỉ status đổi) → vẫn xem đầy đủ,
+           chỉ thiếu owner (isOwner=false → mọi nút thao tác tự ẩn). */
+        let own: string | null = null;
+        try {
+          own = String(await contracts.core.ownerOf(depositId)).toLowerCase();
+        } catch {
+          own = null; // NFT đã burn — sổ đóng
+        }
         const isActivePaused = Boolean(await contracts.vault.isPaused());
         const pausedAtRaw = Number(String(await contracts.vault.pausedAt()));
         const pend = address ? ((await contracts.core.pendingInterestOf(address)) as bigint) : 0n;
@@ -176,6 +201,102 @@ export default function DepositDetail() {
   const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
   const closed = d !== null && Number(d.status) !== ACTIVE;
 
+  /* ── Nút gạt Tự động renew — nạp/lưu preference theo chain + ví + id ── */
+  const arKey =
+    address && depositId !== null ? `ar:${chainId ?? 0}:${address.toLowerCase()}:${depositId}` : null;
+  useEffect(() => {
+    if (!arKey) return;
+    try {
+      const raw = localStorage.getItem(arKey);
+      if (raw) {
+        const j = JSON.parse(raw) as { on?: boolean; planId?: number };
+        setArOn(Boolean(j.on));
+        setArPlan(j.planId ?? null);
+      } else {
+        setArOn(false);
+        setArPlan(null);
+      }
+    } catch {
+      /* JSON hỏng — coi như chưa bật */
+    }
+    arFiredRef.current = false; // đổi sổ → nạp lại cờ tự động
+  }, [arKey]);
+
+  const setAr = (on: boolean, planId: number | null): void => {
+    setArOn(on);
+    setArPlan(planId);
+    if (on && arKey && planId !== null) localStorage.setItem(arKey, JSON.stringify({ on: true, planId }));
+    else if (arKey) localStorage.removeItem(arKey);
+  };
+
+  /* Auto-fire: gạt BẬT + đã quá grace + vẫn Active + là owner + không pause
+     → tự gọi renewDeposit 1 lần (ref chặn gọi lặp khi effect chạy lại theo
+     poll/state; tx lỗi thì dừng — user sửa thiết lập rồi thử lại). */
+  useEffect(() => {
+    if (arFiredRef.current || !arOn || arPlan === null || !isOwner || paused || closed || !overGrace || pending) {
+      return;
+    }
+    arFiredRef.current = true;
+    void autoRenewNow(arPlan);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arOn, arPlan, isOwner, paused, closed, overGrace, pending]);
+
+  /* ── Sổ đóng → dựng "Kết quả tất toán" từ event log: thời điểm rút, số nhận,
+        lãi, phạt rút sớm (PenaltyCharged), renew → sổ mới ── */
+  useEffect(() => {
+    if (!contracts || !hasDeployment || depositId === null || !closed) {
+      setClosedResult(null);
+      return;
+    }
+    let cancelled = false;
+    const core = contracts.core;
+    void (async () => {
+      try {
+        const withdrawn = (await core.queryFilter(core.filters.Withdrawn(depositId, null))) as EventLog[];
+        const emergency = (await core.queryFilter(core.filters.EmergencyWithdrawn(depositId, null))) as EventLog[];
+        const renewed = (await core.queryFilter(core.filters.Renewed(depositId, null))) as EventLog[];
+        const penalties = (await core.queryFilter(core.filters.PenaltyCharged(depositId, null))) as EventLog[];
+
+        let received = 0n;
+        let interest = 0n;
+        let penalty = 0n;
+        let at: number | null = null;
+        let newId: number | null = null;
+
+        for (const l of withdrawn) {
+          const a = l.args as unknown[];
+          received += a[2] as bigint;
+          interest += a[3] as bigint;
+          const b = await getBrowser()?.getBlock(l.blockNumber).catch(() => null);
+          if (b) at = Number(b.timestamp);
+        }
+        for (const l of emergency) {
+          const a = l.args as unknown[];
+          received += a[2] as bigint;
+          const b = await getBrowser()?.getBlock(l.blockNumber).catch(() => null);
+          if (b) at = Number(b.timestamp);
+        }
+        for (const l of renewed) {
+          const a = l.args as unknown[];
+          newId = Number(a[1]);
+          const b = await getBrowser()?.getBlock(l.blockNumber).catch(() => null);
+          if (b) at = Number(b.timestamp);
+        }
+        for (const l of penalties) {
+          const a = l.args as unknown[];
+          penalty += a[2] as bigint;
+        }
+
+        if (!cancelled) setClosedResult({ at, received, interest, penalty, newId });
+      } catch {
+        /* RPC giới hạn — bỏ qua, card không hiện */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [contracts, hasDeployment, depositId, closed, getBrowser]);
+
   /* ── Poll block mới: khi deposit Active chưa matured, block được ghi mới →
         refetch pv + cập nhật nowSec — lãi hiển thị chỉ thay đổi theo block ── */
   const interestLive = d !== null && Number(d.status) === ACTIVE && !matured;
@@ -222,6 +343,30 @@ export default function DepositDetail() {
     void run(label, async () => call()).then((hash) => {
       if (hash) setWithdrawnOk(true);
     });
+  };
+
+  /* Tự động renew theo nút gạt: khi đến lượt (đã quá grace) tự gọi
+     renewDeposit(depositId, planId) — hàm public của contract (chỉ yêu cầu
+     now >= maturityAt, cho phép chọn plan). Parse event Renewed → chuyển sang
+     trang deposit mới (NFT cũ đã burn). */
+  const autoRenewNow = async (planId: number): Promise<void> => {
+    if (!signerC || depositId === null) return;
+    const iface = signerC.core.interface;
+    let newId: number | null = null;
+    const hash = await run("Tự động renew", async () => {
+      const tx = (await signerC.core.renewDeposit(depositId, planId)) as unknown as ContractTransactionResponse;
+      const receipt = await tx.wait();
+      for (const log of receipt?.logs ?? []) {
+        try {
+          const desc = iface.parseLog({ topics: log.topics as string[], data: log.data });
+          if (desc?.name === "Renewed") newId = Number((desc.args as unknown[])[1]);
+        } catch {
+          /* log của contract khác — bỏ qua */
+        }
+      }
+      return tx;
+    });
+    if (hash && newId !== null && newId > 0) navigate(`/deposit/${newId}`);
   };
 
   if (notFound) {
@@ -388,6 +533,106 @@ export default function DepositDetail() {
         />
       </div>
 
+      {/* ── Nút gạt Tự động renew — luôn hiện khi Active + owner, đặt TRÊN card
+          progress kỳ hạn (user yêu cầu); set ý định sớm, đến lượt là tự chạy ── */}
+      {isOwner && !closed && (
+        <div className="card mt-3 !py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display tracking-wider">Tự động renew</h2>
+              <p className="text-xs text-subtle mt-1">
+                Bật: khi sổ đáo hạn và hết <span className="num">3 ngày</span> grace, app{" "}
+                <strong className="text-txt">tự gọi renew</strong> toàn bộ principal + lãi ghép theo plan bạn chọn
+                bên dưới. NFT mới được mint — trang tự chuyển sang sổ mới.
+                {!overGrace && d !== null && (
+                  <> Hẹn: <span className="num text-primary">{fmtDate(Number(d.maturityAt) + GRACE_SECONDS)}</span>.</>
+                )}
+              </p>
+
+              {arOn && (
+                <div className="mt-3">
+                  <span className="eyebrow">Plan sẽ renew vào</span>
+                  <div className="mt-1.5 max-w-md">
+                    <RenewPlanSelect
+                      plans={plans}
+                      currentPlanId={Number(d?.planId ?? 0)}
+                      value={arPlan}
+                      onChange={(planId) => setAr(true, planId)}
+                      disabled={pending}
+                      plansLoading={plansLoading}
+                    />
+                  </div>
+                  <p className="text-[11px] text-subtle mt-1.5">
+                    Hover/chọn plan để xem APR · kỳ hạn · phạt rút sớm (mặc định: plan hiện tại).
+                  </p>
+                </div>
+              )}
+
+              {arOn && overGrace && (
+                <p className="text-xs text-ok mt-2" role="status">
+                  Đã đủ điều kiện — app sẽ tự renew ngay (chỉ chạy 1 lần).
+                </p>
+              )}
+            </div>
+
+            {/* Switch — nút gạt có cửa sổ xác nhận khi BẬT và khi TẮT */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={arOn}
+              aria-label="Tự động renew sau grace"
+              disabled={pending}
+              className="shrink-0 cursor-pointer disabled:opacity-50"
+              onClick={async () => {
+                if (!arOn) {
+                  const ok = await confirm({
+                    title: "Bật tự động renew",
+                    message: (
+                      <>
+                        Khi sổ #{depositId} đáo hạn và hết <span className="num">3 ngày</span> grace, app sẽ{" "}
+                        <strong className="text-ok">tự động gọi renew</strong> toàn bộ principal + lãi ghép theo plan
+                        bạn chọn. NFT mới được mint — trang tự chuyển sang sổ mới.
+                        <br />
+                        <span className="text-xs text-subtle">
+                          App/tab cần đang mở để chạy (bot off-chain vẫn chạy song song khi node có key).
+                        </span>
+                      </>
+                    ),
+                    okLabel: "Bật tự động renew",
+                  });
+                  if (ok) setAr(true, arPlan ?? renewPlan);
+                } else {
+                  const ok = await confirm({
+                    title: "Tắt tự động renew",
+                    message: (
+                      <>
+                        Không còn tự renew khi hết grace nữa — bạn phải{" "}
+                        <strong>renew hoặc rút thủ công</strong>.
+                      </>
+                    ),
+                    tone: "danger",
+                    okLabel: "Tắt tự động renew",
+                  });
+                  if (ok) setAr(false, null);
+                }
+              }}
+            >
+              <span
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
+                  arOn ? "bg-ok" : "bg-subtle/40"
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                    arOn ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Progress kỳ hạn (startAt → maturityAt) — scaleX GPU-safe */}
       {Number(d.status) === ACTIVE && Number(d.maturityAt) > 0 && (
         <div className="card mt-3 !py-3" aria-hidden>
@@ -440,7 +685,49 @@ export default function DepositDetail() {
 
       {closed && (
         <div className="card mt-4 border-subtle/40 text-subtle text-sm">
-          Deposit đã đóng — NFT đã burn. Số liệu trên là lịch sử (Withdrawn / EarlyWithdrawn / AutoRenewed).
+          Sổ đã đóng — <strong className="text-txt">chế độ chỉ xem</strong> (NFT đã burn, không thao tác được). Số
+          liệu trên là snapshot lịch sử.
+        </div>
+      )}
+
+      {/* Kết quả tất toán — thời gian rút, số nhận, lãi/lỗ (phạt), renew → sổ mới */}
+      {closed && closedResult && (
+        <div className="card mt-4">
+          <span className="eyebrow">Kết quả tất toán</span>
+          <dl className="num mt-3 space-y-2 text-sm">
+            {closedResult.at !== null && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-subtle">Thời điểm tất toán</dt>
+                <dd>{fmtDate(closedResult.at)}</dd>
+              </div>
+            )}
+            <div className="flex justify-between gap-4">
+              <dt className="text-subtle">Số tiền nhận</dt>
+              <dd>{fmtToken(closedResult.received, 2)} USDC</dd>
+            </div>
+            {closedResult.interest > 0n && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-subtle">Lãi nhận</dt>
+                <dd className="text-ok">+{fmtToken(closedResult.interest, 4)} USDC</dd>
+              </div>
+            )}
+            {closedResult.penalty > 0n && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-subtle">Phạt rút sớm (lỗ)</dt>
+                <dd className="text-err">−{fmtToken(closedResult.penalty, 2)} USDC</dd>
+              </div>
+            )}
+            {closedResult.newId !== null && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-subtle">Tái ký thành sổ mới</dt>
+                <dd>
+                  <Link to={`/deposit/${closedResult.newId}`} className="text-secondary hover:underline">
+                    Sổ #{closedResult.newId} →
+                  </Link>
+                </dd>
+              </div>
+            )}
+          </dl>
         </div>
       )}
 

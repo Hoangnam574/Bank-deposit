@@ -36,7 +36,7 @@ export default function Dashboard() {
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
       {/* ── Hero: eyebrow + macro-whitespace (high-end §4C) ─── */}
       <section className="mt-4 rounded-xl border border-line band px-6 py-12 sm:px-10 sm:py-14">
-        <span className="eyebrow">Vault NFT receipt · compound lãi/second</span>
+        <span className="eyebrow">Vault NFT receipt</span>
         <h1 className="mt-4 text-4xl sm:text-5xl font-bold font-display tracking-tight">
           Tiết kiệm có kỳ hạn
           <span className="text-primary"> USDC</span>
