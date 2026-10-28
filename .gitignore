@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Build / cache outputs
+artifacts/
+cache/
+dist/
+coverage/
+coverage.json
+types/
+
+# Hardhat local deployments (addresses ghi trong README thay vì commit)
+ignition/deployments/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
+.playwright
+
+# Agent skills library (bên thứ ba — reproducible từ skills-lock.json)
+.agents/
+.agent/
+skills/
+.claude/skills/
+.codex/skills/
+DESIGN.md
+docs/demo-script.md
+docs/review-script.md
+temp/
+EXECUTION_PLAN.md
+implementation_plan.md
+SECURITY_PLAN.md
+Final_Assignment*.pdf
+extracted_assignment.txt
+extracted_assignment_with_prompt_1.txt
+extracted_assignment_with_prompt_2.txt
+IMPLEMENTATION_PLAN.md

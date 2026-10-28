@@ -1,0 +1,50 @@
+# Gitleaks config — Bank Deposit DApp (final project AT190234)
+# Chạy:  gitleaks detect            (quét git history)
+#        gitleaks detect --no-git   (quét working tree)
+
+[extend]
+# Dùng toàn bộ default ruleset của gitleaks (AWS/GCP keys, private keys, tokens...)
+useDefault = true
+
+# ---- Cho phép kết quả dương tính giả BIẾT TRƯỚC (dev-only, không phải secret thật) ----
+
+# 1. Private key #0..#3 mặc định của Hardhat Network — key công khai của mnemonic
+#    test-standard, ai cũng biết; KHÔNG phải secret dự án.
+[[allowlists]]
+description = "Hardhat default test keys (mnemonic test standard)"
+regexes = [
+  '''0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80''',
+  '''0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d''',
+  '''0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a''',
+  '''0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6''',
+  '''0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a''',
+  '''0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba''',
+  '''0xdf9bb05de5e82589a9de316a94054c69bb075a4bb48ff1651fdd08508b103f2a''',
+]
+
+# 2. Mnemonic test-standard của Hardhat (12 chữ "test" + junk) — chỉ hợp lệ trong
+#    hardhat.config và thư mục test.
+[[allowlists]]
+description = "Hardhat standard test mnemonic in config/tests"
+paths = ['''hardhat\.config\.(ts|js)$''', '''test[/\\]''']
+regexes = ['''test test test test test test test test test test test junk''']
+
+# 3. File .env — chứa secret THẬT của người dùng nhưng ĐÃ được .gitignore
+#    (git history không bao giờ chứa nó; --no-git quét working tree sẽ bỏ qua
+#    các file này vì chúng không thuộc scope repository).
+[[allowlists]]
+description = "Local .env files (gitignored, never committed)"
+paths = ['''(^|/)\.env$''']
+
+# 4. Tài liệu skill cục bộ (.agents/skills/*.md) — KHÔNG được track vào git
+#    (verify: `git ls-files .agents/skills` = 0 file). Các hit là ví dụ cURL/JWT/
+#    API-key nằm trong văn bản hướng dẫn, không phải secret của dự án.
+[[allowlists]]
+description = "Local skill documentation (untracked, example credentials in prose)"
+paths = ['''\.agents[/\\]skills[/\\]''']
+
+# 5. deployed_addresses.json của Ignition — chỉ chứa ĐỊA CHỈ CONTRACT CÔNG KHAI
+#    (public on-chain data, ai cũng đọc được từ blockchain explorer).
+[[allowlists]]
+description = "Public contract addresses in Ignition deployment records"
+paths = ['''deployments[/\\]chain-\d+[/\\]deployed_addresses\.json$''']
