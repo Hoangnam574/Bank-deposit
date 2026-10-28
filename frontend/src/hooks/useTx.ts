@@ -62,6 +62,7 @@ export function useTx() {
         });
         return hash ?? `${message} — OK (block ${receipt?.blockNumber})`;
       } catch (err: unknown) {
+        if (t) toast.dismiss(t.id); // lỗi ngay lúc gửi — xoá spinner "đang gửi..." (kết quả có rồi thì quá trình phải đi)
         const friendly = mapContractError(err);
         let msg = friendly ?? `${message} không thể hoàn tất`.trim();
         setState({ status: "error", message: msg });
