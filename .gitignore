@@ -27,7 +27,7 @@ desktop.ini
 .vscode/
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
-temp/
+.playwright
 
 # Agent skills library (bên thứ ba — reproducible từ skills-lock.json)
 .agents/
@@ -35,3 +35,15 @@ temp/
 skills/
 .claude/skills/
 .codex/skills/
+DESIGN.md
+docs/demo-script.md
+docs/review-script.md
+temp/
+EXECUTION_PLAN.md
+implementation_plan.md
+SECURITY_PLAN.md
+Final_Assignment.pdf
+extracted_assignment.txt
+extracted_assignment_with_prompt_1.txt
+extracted_assignment_with_prompt_2.txt
+IMPLEMENTATION_PLAN.md
