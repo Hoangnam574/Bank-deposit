@@ -44,7 +44,6 @@ export function useTx() {
           toast.push({
             kind: "error",
             message: `${message} — giao dịch reverted`,
-            sticky: true,
           });
           return null;
         }
@@ -66,7 +65,7 @@ export function useTx() {
         const friendly = mapContractError(err);
         let msg = friendly ?? `${message} không thể hoàn tất`.trim();
         setState({ status: "error", message: msg });
-        toast.push({ kind: "error", message: msg, sticky: true });
+        toast.push({ kind: "error", message: msg });
         return null;
       }
     },

@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, AlertTriangle, Loader2, SearchX } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Loader2, SearchX, CheckCircle2 } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
@@ -75,6 +75,7 @@ export default function DepositDetail() {
   const [owner, setOwner] = useState<string | null>(null);
   const [pendingInterest, setPendingInterest] = useState<bigint | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [withdrawnOk, setWithdrawnOk] = useState(false);
   const [approved, setApproved] = useState(false);
 
   const [inputAmount, setInputAmount] = useState("");
@@ -212,7 +213,40 @@ export default function DepositDetail() {
     void run(label, async () => call());
   };
 
+  /* Action burn NFT (rút full / rút sớm / emergency) — tiền về ví và deposit id
+     hết tồn tại; thành công → trang chuyển sang màn "Rút thành công" + nút về /deposits */
+  const withdrawCall = (
+    label: string,
+    call: () => Promise<ContractTransactionResponse>,
+  ): void => {
+    void run(label, async () => call()).then((hash) => {
+      if (hash) setWithdrawnOk(true);
+    });
+  };
+
   if (notFound) {
+    if (withdrawnOk) {
+      return (
+        <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-20">
+          <section className="mt-10 card !rounded-2xl py-16 px-6 text-center">
+            <CheckCircle2 size={44} className="text-ok mx-auto" aria-hidden />
+            <h1 className="mt-4 text-xl font-semibold font-display text-txt">Rút thành công</h1>
+            <p className="mt-2 text-sm text-subtle max-w-md mx-auto">
+              Deposit #{depositId} đã tất toán — NFT đã burn, số tiền (principal + lãi / sau penalty)
+              đã về ví của bạn.
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <Link to="/deposits" className="btn btn-cta cursor-pointer">
+                Về sổ tiết kiệm
+              </Link>
+              <Link to="/" className="btn btn-outline cursor-pointer">
+                Về trang chủ
+              </Link>
+            </div>
+          </section>
+        </main>
+      );
+    }
     return (
       <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-20">
         <button
@@ -458,7 +492,7 @@ export default function DepositDetail() {
                 className="btn btn-cta"
                 disabled={pending}
                 onClick={() =>
-                  contractCall("Rút đủ hạn", async () => (await signerC!.core.withdrawAtMaturity(depositId!)) as unknown as ContractTransactionResponse)
+                  withdrawCall("Rút đủ hạn", async () => (await signerC!.core.withdrawAtMaturity(depositId!)) as unknown as ContractTransactionResponse)
                 }
               >
                 Rút full (+{fmtToken(pv.interest, 2)} lãi)
@@ -487,7 +521,7 @@ export default function DepositDetail() {
                     okLabel: "Đồng ý rút sớm",
                   });
                   if (ok) {
-                    contractCall("Rút sớm", async () => (await signerC!.core.earlyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
+                    withdrawCall("Rút sớm", async () => (await signerC!.core.earlyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
                   }
                 }}
               >
@@ -621,7 +655,7 @@ export default function DepositDetail() {
                     okLabel: "Emergency withdraw",
                   });
                   if (ok) {
-                    contractCall("Emergency withdraw", async () => (await signerC!.core.emergencyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
+                    withdrawCall("Emergency withdraw", async () => (await signerC!.core.emergencyWithdraw(depositId!)) as unknown as ContractTransactionResponse);
                   }
                 }}
               >
