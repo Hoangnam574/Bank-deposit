@@ -164,8 +164,19 @@ export default function Admin() {
       <section className="mt-6 rounded-2xl border border-line band px-6 py-6 sm:px-9">
         <span className="eyebrow">Vault owner panel</span>
         <h1 className="mt-3 text-3xl font-bold font-display tracking-tight">Admin console</h1>
-        <p className="num text-subtle text-sm mt-1">
-          Vault owner: <code>{owner ?? "—"}</code>{" "}
+        <p className="num text-subtle text-sm mt-1 flex flex-wrap items-center gap-x-1">
+          Vault owner:
+          {/* Rút gọn 0xAB…XYZ + copy — tránh chuỗi dài làm tràn card trên mobile */}
+          {owner && (
+            <button
+              type="button"
+              title={`${owner} — bấm để copy`}
+              onClick={() => void navigator.clipboard?.writeText(owner)}
+              className="num text-txt cursor-pointer hover:text-primary transition-colors duration-200"
+            >
+              <code>{owner.slice(0, 6)}…{owner.slice(-4)}</code>
+            </button>
+          )}{" "}
           {isOwner ? (
             <span className="text-ok">(bạn là owner)</span>
           ) : (

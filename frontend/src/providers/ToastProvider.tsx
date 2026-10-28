@@ -61,7 +61,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
       {/* aria-live: screen reader đọc nội dung toast khi tx xong/lỗi */}
-      <div aria-live="polite" className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-[95vw]">
+      <div aria-live="polite" className="fixed bottom-[4.25rem] sm:bottom-4 right-4 z-50 flex flex-col gap-2 max-w-[95vw]">
         {toasts.map((t) => (
           <ToastRow key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
         ))}

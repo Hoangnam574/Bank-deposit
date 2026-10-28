@@ -21,12 +21,15 @@ function Tile({
   accent?: boolean;
 }) {
   return (
-    <div className="stat-tile flex-1 min-w-[150px]">
+    /* min-w-[46%] + flex-wrap → grid 2×2 trên mobile: 4 tile không còn bị ép
+       vào 1 hàng gây tràn ngang; ≥sm: về hàng ngang 150px như cũ. */
+    <div className="stat-tile flex-1 min-w-[46%] sm:min-w-[150px]">
       <div className="flex items-center gap-1.5 text-xs text-subtle">
         {icon}
         {label}
       </div>
-      <div className={`num mt-1 text-lg font-display ${accent ? "text-primary" : ""}`}>{value}</div>
+      {/* tabular-nums + truncate: số dài (499,981.5) hiển thị vừa frame, không cắt rìa phải */}
+      <div className={`num mt-1 text-base sm:text-lg font-display truncate ${accent ? "text-primary" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -40,7 +43,7 @@ export default function StatStrip() {
 
   return (
     <div className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pt-4">
-      <div className="card !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 divide-x divide-line">
+      <div className="card !py-3 flex flex-wrap items-stretch gap-x-2 gap-y-2 sm:divide-x sm:divide-line">
         <Tile
           icon={<Coins size={14} />}
           label="USDC khả dụng"

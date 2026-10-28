@@ -68,10 +68,7 @@ export default function App() {
               {/* Footer tối — hòa canvas (#0b0e11) + hairline #2B3139, chữ muted
                   (user override: footer trùng màu nền, bỏ footer-light #FAFAFA) */}
               <footer
-                className="mt-10 border-t border-line bg-bg py-10 text-center text-xs text-muted"
-                style={{
-                  paddingBottom: "max(2rem, env(safe-area-inset-bottom, 2rem))",
-                }}
+                className="mt-10 border-t border-line bg-bg py-10 text-center text-xs text-muted pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(2.5rem+env(safe-area-inset-bottom,2rem))]"
               >
               <p className="text-txt font-semibold">Bank Deposit DApp</p>
               <p className="mt-1">

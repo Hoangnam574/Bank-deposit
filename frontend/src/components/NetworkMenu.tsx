@@ -11,7 +11,7 @@ import { useWallet } from "@/providers/WalletProvider";
 import { ChainPill, ALLOWED_CHAINS, CHAIN_LABEL } from "@/components/NetworkGuard";
 import HardhatKeyImport from "@/components/HardhatKeyImport";
 
-export default function NetworkMenu() {
+export default function NetworkMenu({ compact }: { compact?: boolean }) {
   const { chainId } = useWallet();
   const [open, setOpen] = useState(false);
 
@@ -33,7 +33,7 @@ export default function NetworkMenu() {
         onClick={() => setOpen(true)}
         className="cursor-pointer rounded-full hover:outline hover:outline-1 hover:outline-primary/50"
       >
-        <ChainPill chainId={chainId} />
+        <ChainPill chainId={chainId} compact={compact} />
       </button>
 
       {open && <NetworkModal onClose={() => setOpen(false)} />}
