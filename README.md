@@ -1,4 +1,4 @@
-# 🏦 Bank Deposit DApp — AT190234
+# Bank Deposit DApp — AT190234
 
 DApp tiết kiệm có kỳ hạn (fixed-term saving) trên Ethereum: gửi **MockUSDC (6 decimals như USDC thật)**, nhận **NFT chứng nhận** (ERC-721), nhận lãi theo **giây tích luỹ** với **APR + penalty snapshot** khóa tại thời điểm mở. Có **auto-renew bot** và frontend React.
 
@@ -88,9 +88,9 @@ npx hardhat run scripts/bot.ts --network sepolia             # (tùy chọn) aut
 
 | Contract | Địa chỉ Sepolia | Trạng thái |
 |---|---|---|
-| MockUSDC | [`0xF20376156c60FCC68DC360e216A350eAA453d67e`](https://sepolia.etherscan.io/address/0xF20376156c60FCC68DC360e216A350eAA453d67e#code) | ✅ |
-| VaultManager | [`0x6364C8b3042cf79A184062e4e56233fF489E55E9`](https://sepolia.etherscan.io/address/0x6364C8b3042cf79A184062e4e56233fF489E55E9#code) | ✅ |
-| SavingCore | [`0x51Bdfd36F72E554831529946c8B0a2A3D4346205`](https://sepolia.etherscan.io/address/0x51Bdfd36F72E554831529946c8B0a2A3D4346205#code) | ✅ |
+| MockUSDC | [`0xF20376156c60FCC68DC360e216A350eAA453d67e`](https://sepolia.etherscan.io/address/0xF20376156c60FCC68DC360e216A350eAA453d67e#code) | Verified |
+| VaultManager | [`0x6364C8b3042cf79A184062e4e56233fF489E55E9`](https://sepolia.etherscan.io/address/0x6364C8b3042cf79A184062e4e56233fF489E55E9#code) | Verified |
+| SavingCore | [`0x51Bdfd36F72E554831529946c8B0a2A3D4346205`](https://sepolia.etherscan.io/address/0x51Bdfd36F72E554831529946c8B0a2A3D4346205#code) | Verified |
 
 > Deployed 2026-10-26 · deployer `0x649D72EF5d88f0b0bC4ACcF38C8d534B23850295` · 3 contracts **verified + published source** trên Etherscan (và Sourcify) · seed hoàn tất: 4 plan (180/30/90/365 ngày), vault 500.000 USDC, deployer nắm 100.000 USDC faucet. Frontend (`frontend/src/config/addresses.json`) đã nhận chain `11155111` — để demo Sepolia: **MetaMask switch sang mạng Sepolia** là app tự nhận contract thật.
 
