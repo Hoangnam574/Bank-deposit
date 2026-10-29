@@ -513,7 +513,7 @@ export default function DepositDetail() {
         </div>
       )}
 
-      {pendingInterest !== null && pendingInterest > 0n && isOwner && (
+      {pendingInterest !== null && pendingInterest > 0n && (isOwner || !owner) && (
         <div className="card mt-4 border-warn/50 flex flex-wrap items-center gap-3">
           <span className="text-sm flex-1">
             {t("detail.deferred1")} <strong>{t("detail.deferred2")}</strong>{" "}

@@ -10,14 +10,15 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, History, Inbox } from "lucide-react";
-import type { EventLog } from "ethers";
+import type { EventLog, ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import Countdown from "@/components/Countdown";
 import NoDeploymentState from "@/components/NoDeploymentState";
 import { SkeletonRows } from "@/components/Skeleton";
-import { useContracts } from "@/providers/ContractsProvider";
+import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
 import { usePlans } from "@/hooks/usePlans";
 import { useWallet } from "@/providers/WalletProvider";
+import { useTx } from "@/hooks/useTx";
 import { fmtToken, formatBps, fmtDate } from "@/lib/format";
 import { useLang, type TKey } from "@/lib/i18n";
 
@@ -76,6 +77,27 @@ export default function MyDeposits() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "closed">("all");
   const [nowSec, setNowSec] = useState(0);
+  const [pendingInterest, setPendingInterest] = useState<bigint | null>(null);
+
+  const signerC = useSignerContracts();
+  const { run, state: txState } = useTx();
+  const txPending = txState.status === "pending";
+
+  const claimPending = async () => {
+    if (!signerC) return;
+    await run(t("detail.deferredTx"), async () => {
+      const tx = (await signerC.core.claimPendingInterest()) as ContractTransactionResponse;
+      return tx;
+    });
+    if (contracts && address) {
+      try {
+        const p = (await contracts.core.pendingInterestOf(address)) as bigint;
+        setPendingInterest(p);
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   /* Poll block mới theo thời gian tạo khối (block.timestamp) — không nhảy ngược */
   useEffect(() => {
@@ -107,12 +129,20 @@ export default function MyDeposits() {
     if (!contracts || !hasDeployment || !address) {
       setRows([]);
       setHistory([]);
+      setPendingInterest(null);
       setNowSec(0);
       setError(null);
       return;
     }
     let cancelled = false;
     const core = contracts.core;
+
+    core
+      .pendingInterestOf(address)
+      .then((p: bigint) => {
+        if (!cancelled) setPendingInterest(p);
+      })
+      .catch(() => {});
 
     /* cache block.timestamp theo blockNumber — tránh gọi trùng RPC */
     const tsCache = new Map<number, Promise<number | undefined>>();
@@ -328,6 +358,24 @@ export default function MyDeposits() {
           {t("dep.new")} <ArrowRight size={15} />
         </Link>
       </div>
+
+      {/* C1: Banner lãi bị hoãn trả (nợ từ Vault) */}
+      {contracts && pendingInterest !== null && pendingInterest > 0n && (
+        <div className="card mb-6 border-warn/50 flex flex-wrap items-center gap-3 bg-warn/5">
+          <span className="text-sm flex-1">
+            {t("detail.deferred1")} <strong>{t("detail.deferred2")}</strong>{" "}
+            <strong className="text-ok">{fmtToken(pendingInterest)} USDC</strong>.
+          </span>
+          <button
+            type="button"
+            className="btn btn-cta shrink-0"
+            onClick={() => void claimPending()}
+            disabled={txPending}
+          >
+            {t("detail.deferredCta", { amount: fmtToken(pendingInterest, 2) })}
+          </button>
+        </div>
+      )}
 
       {!contracts && <NoDeploymentState page={t("dep.page")} />}
       {contracts && error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
