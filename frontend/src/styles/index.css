@@ -125,6 +125,11 @@
   }
   /* ─── Buttons v4: radius 6px, height 40px, font 14/600 (functional Binance) ─── */
   .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
     font-size: 0.875rem;
     font-weight: 600;
     padding: 0.625rem 1.5rem;

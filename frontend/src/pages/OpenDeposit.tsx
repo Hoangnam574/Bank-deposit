@@ -238,11 +238,12 @@ export default function OpenDeposit() {
           <div className="mt-5 flex flex-wrap gap-3 justify-end">
             <button
               type="button"
-              className="btn btn-cta"
+              className="btn btn-cta inline-flex items-center justify-center gap-2"
               onClick={() => void openDeposit()}
               disabled={!valid || state.status === "pending"}
             >
-              {state.status === "pending" ? <Loader2 className="animate-spin" size={16} /> : null} {t("open.cta")}
+              {state.status === "pending" && <Loader2 className="animate-spin shrink-0" size={16} />}
+              <span>{t("open.cta")}</span>
             </button>
           </div>
           <p className="text-[11px] text-subtle mt-2 text-right">

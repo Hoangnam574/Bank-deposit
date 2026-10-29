@@ -341,8 +341,9 @@ export default function Admin() {
                         onChange={(e) => setVaultAmount(e.target.value)}
                       />
                     </div>
-                    <button type="button" className="btn btn-cta" disabled={pending || !vaultAmount} onClick={fundVault}>
-                      {pending && <Loader2 size={15} className="animate-spin inline mr-1" />} {t("admin.btnFund")}
+                    <button type="button" className="btn btn-cta inline-flex items-center justify-center gap-2" disabled={pending || !vaultAmount} onClick={fundVault}>
+                      {pending && <Loader2 size={15} className="animate-spin shrink-0" />}
+                      <span>{t("admin.btnFund")}</span>
                     </button>
                     <button
                       type="button"

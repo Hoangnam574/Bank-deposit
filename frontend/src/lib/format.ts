@@ -58,6 +58,20 @@ export function previewInterestOnAmount(
   return (principal * seconds * aprBps) / (10_000n * yearSeconds);
 }
 
+/** Tính chênh lệch lãi tăng/giảm cho phần nạp thêm hoặc rút một phần (weighted time accrual) */
+export function computeChunkDeltaInterest(
+  amount: bigint,
+  remainingSeconds: bigint | number,
+  aprBps: bigint | number,
+  yearSeconds: bigint | number = SECONDS_PER_YEAR,
+): bigint {
+  const rem = BigInt(remainingSeconds);
+  if (rem <= 0n || amount <= 0n) return 0n;
+  const apr = BigInt(aprBps);
+  const ys = BigInt(yearSeconds);
+  return (amount * rem * apr) / (10_000n * ys);
+}
+
 /** Với deposit có sẵn — kiểu lãi đã tính chính xác muốn headers theo previewExit từ SC */
 export function formatBps(bps: number | bigint): string {
   const v = Number(bps);

@@ -23,7 +23,7 @@ import { useWallet } from "@/providers/WalletProvider";
 import { useTx } from "@/hooks/useTx";
 import { usePlans } from "@/hooks/usePlans";
 import RenewPlanSelect from "@/components/RenewPlanSelect";
-import { fmtToken, fmtTokenFixed, formatBps, fmtDate } from "@/lib/format";
+import { fmtToken, fmtTokenFixed, formatBps, fmtDate, computeChunkDeltaInterest } from "@/lib/format";
 import { useLang, rawT } from "@/lib/i18n";
 
 const SCALAR = 1_000_000n;
@@ -71,7 +71,7 @@ export default function DepositDetail() {
   const navigate = useNavigate();
   const { contracts, hasDeployment } = useContracts();
   const signerC = useSignerContracts();
-  const { daySeconds, gracePeriod, emergencyDelay } = useContractTime();
+  const { daySeconds, gracePeriod, emergencyDelay, yearSeconds } = useContractTime();
   const { address, getBrowser, chainId } = useWallet();
   const { state, run } = useTx();
   const confirm = useConfirm();
@@ -196,6 +196,33 @@ export default function DepositDetail() {
   const isOwner = owner !== null && address !== null && owner.toLowerCase() === address.toLowerCase();
   const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + emergencyDelay;
   const closed = d !== null && Number(d.status) !== ACTIVE;
+
+  const remainingSec = useMemo(() => {
+    if (!d) return 0;
+    return Math.max(0, Number(d.maturityAt) - nowSec);
+  }, [d, nowSec]);
+
+  const chunkCalc = useMemo(() => {
+    if (!d || amount === null || amount <= 0n || matured) return null;
+    const deltaInterest = computeChunkDeltaInterest(
+      amount,
+      remainingSec,
+      d.aprBpsAtOpen,
+      yearSeconds,
+    );
+    const penalty = (amount * d.penaltyBpsAtOpen) / 10000n;
+    const receive = amount > penalty ? amount - penalty : 0n;
+    const newPrincipalTopup = d.principal + amount;
+    const remainingPrincipalPartial = d.principal > amount ? d.principal - amount : 0n;
+
+    return {
+      deltaInterest,
+      penalty,
+      receive,
+      newPrincipalTopup,
+      remainingPrincipalPartial,
+    };
+  }, [d, amount, matured, remainingSec, yearSeconds]);
 
 
 
@@ -667,18 +694,49 @@ export default function DepositDetail() {
                 }
                 onClick={async () => {
                   const targetAmount = amount!;
+                  const deltaIntStr = chunkCalc ? fmtTokenFixed(chunkCalc.deltaInterest, 6) : "0";
+                  const penaltyStr = chunkCalc ? fmtToken(chunkCalc.penalty, 2) : "0";
+                  const receiveStr = chunkCalc ? fmtToken(chunkCalc.receive, 2) : "0";
+                  const remPrincStr = chunkCalc ? fmtToken(chunkCalc.remainingPrincipalPartial, 2) : "0";
+
                   const ok = await confirm({
                     title: t("detail.partialTitle"),
-                    message: t("detail.partialMsg", { amount: fmtToken(targetAmount), id: depositId }),
+                    message: (
+                      <div className="space-y-3 text-sm">
+                        <p>{t("detail.partialMsg", { amount: fmtToken(targetAmount), id: depositId })}</p>
+                        <div className="p-3 rounded-lg bg-panel border border-line text-xs space-y-1.5 text-left">
+                          <div className="flex justify-between text-err font-medium">
+                            <span>{t("detail.partialLossNote")}</span>
+                            <span className="num font-semibold">−{deltaIntStr} USDC</span>
+                          </div>
+                          <div className="flex justify-between text-warn">
+                            <span>Phạt rút sớm ({formatBps(d!.penaltyBpsAtOpen)}):</span>
+                            <span className="num">−{penaltyStr} USDC</span>
+                          </div>
+                          <div className="flex justify-between border-t border-line/60 pt-1.5 text-ok font-semibold">
+                            <span>Thực nhận về ví ngay:</span>
+                            <span className="num">+{receiveStr} USDC</span>
+                          </div>
+                          <div className="flex justify-between text-subtle text-[11px] pt-0.5">
+                            <span>Gốc còn lại sau khi rút:</span>
+                            <span className="num">{remPrincStr} USDC</span>
+                          </div>
+                        </div>
+                      </div>
+                    ),
+                    tone: "danger",
                     okLabel: t("detail.partialOk"),
                   });
                   if (ok) {
-                    void run(t("detail.txPartial"), async () => {
-                      const tx = (await signerC!.core.partialEarlyWithdraw(depositId!, targetAmount)) as unknown as ContractTransactionResponse;
-                      await tx.wait();
-                      setInputAmount("");
-                      return tx;
-                    });
+                    void run(
+                      `${t("detail.txPartial")} (−${deltaIntStr} USDC lãi)`,
+                      async () => {
+                        const tx = (await signerC!.core.partialEarlyWithdraw(depositId!, targetAmount)) as unknown as ContractTransactionResponse;
+                        await tx.wait();
+                        setInputAmount("");
+                        return tx;
+                      },
+                    );
                   }
                 }}
               >
@@ -709,39 +767,76 @@ export default function DepositDetail() {
                     return;
                   }
                   const topupAmount = amount;
+                  const deltaIntStr = chunkCalc ? fmtTokenFixed(chunkCalc.deltaInterest, 6) : "0";
+                  const newPrincStr = chunkCalc ? fmtToken(chunkCalc.newPrincipalTopup, 2) : "0";
+
                   if (!approved) {
                     const okApprove = await confirm({
                       title: t("detail.topupApproveTitle"),
-                      message: t("detail.topupApproveMsg", { amount: fmtToken(topupAmount), id: depositId }),
+                      message: (
+                        <div className="space-y-3 text-sm">
+                          <p>{t("detail.topupApproveMsg", { amount: fmtToken(topupAmount), id: depositId })}</p>
+                          <div className="p-3 rounded-lg bg-panel border border-line text-xs space-y-1.5 text-left">
+                            <div className="flex justify-between text-ok font-semibold">
+                              <span>{t("detail.topupGainNote")}</span>
+                              <span className="num">+{deltaIntStr} USDC</span>
+                            </div>
+                            <div className="flex justify-between border-t border-line/60 pt-1.5 text-txt">
+                              <span className="text-subtle">Tổng gốc mới sau khi nạp:</span>
+                              <span className="font-semibold num">{newPrincStr} USDC</span>
+                            </div>
+                          </div>
+                        </div>
+                      ),
                       okLabel: t("detail.topupApproveOk"),
                     });
                     if (okApprove) {
-                      void run(t("detail.txTopup"), async () => {
-                        // Bước 1: Cấp quyền (Approve)
-                        const appTx = (await signerC.usdc.approve(signerC.savingCoreAddress, topupAmount)) as unknown as ContractTransactionResponse;
-                        await appTx.wait();
-                        setApproved(true);
-                        // Bước 2: Tự động nạp thêm ngay lập tức
-                        const topTx = (await signerC.core.topUpDeposit(depositId!, topupAmount)) as unknown as ContractTransactionResponse;
-                        await topTx.wait();
-                        setInputAmount(""); // Trả thẻ về trạng thái sạch ban đầu
-                        return topTx;
-                      });
+                      void run(
+                        `${t("detail.txTopup")} (+${deltaIntStr} USDC lãi)`,
+                        async () => {
+                          // Bước 1: Cấp quyền (Approve)
+                          const appTx = (await signerC.usdc.approve(signerC.savingCoreAddress, topupAmount)) as unknown as ContractTransactionResponse;
+                          await appTx.wait();
+                          setApproved(true);
+                          // Bước 2: Tự động nạp thêm ngay lập tức
+                          const topTx = (await signerC.core.topUpDeposit(depositId!, topupAmount)) as unknown as ContractTransactionResponse;
+                          await topTx.wait();
+                          setInputAmount(""); // Trả thẻ về trạng thái sạch ban đầu
+                          return topTx;
+                        },
+                      );
                     }
                     return;
                   }
                   const ok = await confirm({
                     title: t("detail.topupTitle"),
-                    message: t("detail.topupMsg", { amount: fmtToken(topupAmount), id: depositId }),
+                    message: (
+                      <div className="space-y-3 text-sm">
+                        <p>{t("detail.topupMsg", { amount: fmtToken(topupAmount), id: depositId })}</p>
+                        <div className="p-3 rounded-lg bg-panel border border-line text-xs space-y-1.5 text-left">
+                          <div className="flex justify-between text-ok font-semibold">
+                            <span>{t("detail.topupGainNote")}</span>
+                            <span className="num">+{deltaIntStr} USDC</span>
+                          </div>
+                          <div className="flex justify-between border-t border-line/60 pt-1.5 text-txt">
+                            <span className="text-subtle">Tổng gốc mới:</span>
+                            <span className="font-semibold num">{newPrincStr} USDC</span>
+                          </div>
+                        </div>
+                      </div>
+                    ),
                     okLabel: t("detail.topupOk"),
                   });
                   if (ok) {
-                    void run(t("detail.txTopup"), async () => {
-                      const topTx = (await signerC!.core.topUpDeposit(depositId!, topupAmount)) as unknown as ContractTransactionResponse;
-                      await topTx.wait();
-                      setInputAmount(""); // Trả thẻ về trạng thái sạch ban đầu
-                      return topTx;
-                    });
+                    void run(
+                      `${t("detail.txTopup")} (+${deltaIntStr} USDC lãi)`,
+                      async () => {
+                        const topTx = (await signerC!.core.topUpDeposit(depositId!, topupAmount)) as unknown as ContractTransactionResponse;
+                        await topTx.wait();
+                        setInputAmount(""); // Trả thẻ về trạng thái sạch ban đầu
+                        return topTx;
+                      },
+                    );
                   }
                 }}
               >
