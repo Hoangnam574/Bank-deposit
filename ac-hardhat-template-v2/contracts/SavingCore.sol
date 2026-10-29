@@ -10,20 +10,20 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IVaultManager} from "./interfaces/IVaultManager.sol";
 
 /// @title SavingCore
-/// @notice Toàn bộ nghiệp vụ tiết kiệm: tạo plan, mở/đáo hạn/rút sớm/tái tục
-///         (manual + auto) deposit, và cấp "giấy chứng nhận gửi tiết kiệm" dạng ERC721.
-/// @dev  - HỖ PRINCIPAL người dùng nằm ở đây (tách biệt với pool lãi của bank).
-///       - Lãi LUÔN được trả từ VaultManager, không bao giờ lấy từ principal
-///         của người dùng khác (Rule #1 của đề).
-///       - APR + penalty được SNAPSHOT vào từng deposit khi mở — admin sửa
-///         plan sau đó không ảnh hưởng các deposit cũ (ADR-002).
-///       - Auto-renew giữ nguyên APR gốc (ADR-003) và cùng tenor.
-///       - Pause đọc từ VaultManager duy nhất (ADR: D2) — SavingCore giữ modifier
-///         whenSystemRunning; payInterest trong vault vẫn chảy để phục vụ C1/C5.
+/// @notice ToÃ n bá»™ nghiá»‡p vá»¥ tiáº¿t kiá»‡m: táº¡o plan, má»Ÿ/Ä‘Ã¡o háº¡n/rÃºt sá»›m/tÃ¡i tá»¥c
+///         (manual + auto) deposit, vÃ  cáº¥p "giáº¥y chá»©ng nháº­n gá»­i tiáº¿t kiá»‡m" dáº¡ng ERC721.
+/// @dev  - Há»– PRINCIPAL ngÆ°á»i dÃ¹ng náº±m á»Ÿ Ä‘Ã¢y (tÃ¡ch biá»‡t vá»›i pool lÃ£i cá»§a bank).
+///       - LÃ£i LUÃ”N Ä‘Æ°á»£c tráº£ tá»« VaultManager, khÃ´ng bao giá» láº¥y tá»« principal
+///         cá»§a ngÆ°á»i dÃ¹ng khÃ¡c (Rule #1 cá»§a Ä‘á»).
+///       - APR + penalty Ä‘Æ°á»£c SNAPSHOT vÃ o tá»«ng deposit khi má»Ÿ â€” admin sá»­a
+///         plan sau Ä‘Ã³ khÃ´ng áº£nh hÆ°á»Ÿng cÃ¡c deposit cÅ© (ADR-002).
+///       - Auto-renew giá»¯ nguyÃªn APR gá»‘c (ADR-003) vÃ  cÃ¹ng tenor.
+///       - Pause Ä‘á»c tá»« VaultManager duy nháº¥t (ADR: D2) â€” SavingCore giá»¯ modifier
+///         whenSystemRunning; payInterest trong vault váº«n cháº£y Ä‘á»ƒ phá»¥c vá»¥ C1/C5.
 contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // ═══════════════════════════ Errors ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Errors â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     error SC_PlanUnknown();
     error SC_InvalidPlan();
@@ -40,27 +40,27 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     error SC_TooLate();
     error SC_InvalidAmounts();
 
-    // ── Bonus C1/C5 (P3) ──
-    /// @notice claimPendingInterest khi không có lãi chờ.
+    // â”€â”€ Bonus C1/C5 (P3) â”€â”€
+    /// @notice claimPendingInterest khi khÃ´ng cÃ³ lÃ£i chá».
     error SC_NothingPending();
-    /// @notice emergencyWithdraw khi hệ thống KHÔNG pause.
+    /// @notice emergencyWithdraw khi há»‡ thá»‘ng KHÃ”NG pause.
     error SC_SystemNotPaused();
-    /// @notice emergencyWithdraw khi pause chưa đủ 7 ngày (C5).
+    /// @notice emergencyWithdraw khi pause chÆ°a Ä‘á»§ 7 ngÃ y (C5).
     error SC_EmergencyNotReady();
 
-    // ═══════════════════════════ Types ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Types â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Sản phẩm tiết kiệm của ngân hàng (rate/tenor/min/max/penalty).
+    /// @notice Sáº£n pháº©m tiáº¿t kiá»‡m cá»§a ngÃ¢n hÃ ng (rate/tenor/min/max/penalty).
     struct Plan {
         uint256 tenorDays;
         uint256 aprBps;
         uint256 minDeposit;
-        uint256 maxDeposit; // 0 = không giới hạn trên
+        uint256 maxDeposit; // 0 = khÃ´ng giá»›i háº¡n trÃªn
         uint256 earlyWithdrawPenaltyBps;
         bool enabled;
     }
 
-    /// @notice Trạng thái sống của deposit (theo đề).
+    /// @notice Tráº¡ng thÃ¡i sá»‘ng cá»§a deposit (theo Ä‘á»).
     enum DepositStatus {
         Active,
         Withdrawn,
@@ -68,23 +68,23 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         AutoRenewed
     }
 
-    /// @notice Ghi sổ một deposit. Giữ nguyên các trường khi tất toán để
-    ///         phục vụ truy vết lịch sử (chỉ `status` đổi).
+    /// @notice Ghi sá»• má»™t deposit. Giá»¯ nguyÃªn cÃ¡c trÆ°á»ng khi táº¥t toÃ¡n Ä‘á»ƒ
+    ///         phá»¥c vá»¥ truy váº¿t lá»‹ch sá»­ (chá»‰ `status` Ä‘á»•i).
     struct DepositInfo {
         uint256 planId;
-        uint256 principal; // số principal còn ở hợp đồng (C3 sẽ giảm)
-        uint256 principalSeconds; // Σ principal × số giây còn lại (C3/C4 dùng)
+        uint256 principal; // sá»‘ principal cÃ²n á»Ÿ há»£p Ä‘á»“ng (C3 sáº½ giáº£m)
+        uint256 principalSeconds; // Î£ principal Ã— sá»‘ giÃ¢y cÃ²n láº¡i (C3/C4 dÃ¹ng)
         uint256 startAt;
         uint256 maturityAt;
-        uint256 aprBpsAtOpen; // SNAPSHOT — không đổi (ADR-002)
-        uint256 penaltyBpsAtOpen; // SNAPSHOT — không đổi (ADR-002)
+        uint256 aprBpsAtOpen; // SNAPSHOT â€” khÃ´ng Ä‘á»•i (ADR-002)
+        uint256 penaltyBpsAtOpen; // SNAPSHOT â€” khÃ´ng Ä‘á»•i (ADR-002)
         uint256 tenorDays;
         DepositStatus status;
     }
 
-    // ═══════════════════════════ Events ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Events â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ── Bắt buộc theo đề (5 sự kiện) ──
+    // â”€â”€ Báº¯t buá»™c theo Ä‘á» (5 sá»± kiá»‡n) â”€â”€
     event PlanCreated(uint256 indexed planId, uint256 tenorDays, uint256 aprBps);
     event PlanUpdated(uint256 indexed planId, uint256 newAprBps);
     event DepositOpened(
@@ -109,15 +109,15 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 newPlanId
     );
 
-    // ── Bổ sung phục vụ frontend/indexer ──
+    // â”€â”€ Bá»• sung phá»¥c vá»¥ frontend/indexer â”€â”€
     event PlanEnabled(uint256 indexed planId, bool enabled);
     event PenaltyCharged(uint256 indexed depositId, address indexed user, uint256 penalty);
 
-    // ── Bonus C1: lãi bị trì hoãn khi vault thiếu ──
+    // â”€â”€ Bonus C1: lÃ£i bá»‹ trÃ¬ hoÃ£n khi vault thiáº¿u â”€â”€
     event InterestDeferred(uint256 indexed depositId, address indexed user, uint256 interest);
     event PendingInterestClaimed(address indexed user, uint256 amount);
 
-    // ── Bonus C4: top-up ──
+    // â”€â”€ Bonus C4: top-up â”€â”€
     event DepositToppedUp(
         uint256 indexed depositId,
         address indexed user,
@@ -125,79 +125,88 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 newPrincipal
     );
 
-    // ── Bonus C5: emergency withdraw ──
+    // â”€â”€ Bonus C5: emergency withdraw â”€â”€
     event EmergencyWithdrawn(uint256 indexed depositId, address indexed user, uint256 principal);
 
-    // ═══════════════════════════ Constants ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Constants â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ── Biến thể cá nhân AT190234: A=4, B=3 ──
-    /// @notice Grace period của auto-renew: (A mod 3) + 2 = 3 ngày.
-    uint256 public constant GRACE_PERIOD = 3 days;
-    /// @notice C5: cho phép emergency withdraw khi pause liên tục quá 7 ngày.
-    uint256 public constant EMERGENCY_DELAY = 7 days;
+    // â”€â”€ Biáº¿n thá»ƒ cÃ¡ nhÃ¢n AT190234: A=4, B=3 â”€â”€
+    /// @notice Sá»‘ giÃ¢y trong 1 "ngÃ y" (máº·c Ä‘á»‹nh 86400, test 1).
+    uint256 public immutable DAY_SECONDS;
+    /// @notice Grace period cá»§a auto-renew: (A mod 3) + 2 = 3 ngÃ y.
+    uint256 public immutable GRACE_PERIOD;
+    /// @notice C5: cho phÃ©p emergency withdraw khi pause liÃªn tá»¥c quÃ¡ 7 ngÃ y.
+    uint256 public immutable EMERGENCY_DELAY;
 
-    /// @notice Mẫu số công thức lãi: 365 × 24 × 3600 giây.
-    uint256 public constant YEAR_SECONDS = 365 days;
+    /// @notice Máº«u sá»‘ cÃ´ng thá»©c lÃ£i: 365 Ã— DAY_SECONDS.
+    uint256 public immutable YEAR_SECONDS;
+
     /// @notice 10_000 bps = 100%.
     uint256 public constant BPS_DIVISOR = 10_000;
-    /// @notice Giới hạn principal tối đa chặn overflow phi thực tế (1 tỷ USDC).
+    /// @notice Giá»›i háº¡n principal tá»‘i Ä‘a cháº·n overflow phi thá»±c táº¿ (1 tá»· USDC).
     uint256 public constant MAX_PRINCIPAL = 1_000_000_000_000_000 * 1_000_000; // 1e15 USDC
 
-    uint256 private constant _DAY = 1 days;
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Storage â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ═══════════════════════════ Storage ═══════════════════════════
-
-    /// @notice USDC mô phỏng (6 decimals). Immutable — chống "fake token".
+    /// @notice USDC mÃ´ phá»ng (6 decimals). Immutable â€” chá»‘ng "fake token".
     IERC20 public immutable token;
-    /// @notice Kho lãi của ngân hàng. Immutable — đã link ở constructor.
+    /// @notice Kho lÃ£i cá»§a ngÃ¢n hÃ ng. Immutable â€” Ä‘Ã£ link á»Ÿ constructor.
     IVaultManager public immutable vault;
 
-    /// @notice Id kế tiếp: bắt đầu từ 1 (id 0 không tồn tại).
+    /// @notice Id káº¿ tiáº¿p: báº¯t Ä‘áº§u tá»« 1 (id 0 khÃ´ng tá»“n táº¡i).
     uint256 public nextPlanId;
-    /// @notice Id kế tiếp tạo deposit: bắt đầu từ 1.
+    /// @notice Id káº¿ tiáº¿p táº¡o deposit: báº¯t Ä‘áº§u tá»« 1.
     uint256 public nextDepositId;
 
     mapping(uint256 planId => Plan) private _plans;
     mapping(uint256 depositId => DepositInfo) private _deposits;
 
-    /// @notice C1: lãi NỢ người dùng chưa nhận được (vault thiếu tại maturity).
-    ///         Khoản này VẪN được tính vào `totalOwedInterest` — bank không thoái thác.
+    /// @notice C1: lÃ£i Ná»¢ ngÆ°á»i dÃ¹ng chÆ°a nháº­n Ä‘Æ°á»£c (vault thiáº¿u táº¡i maturity).
+    ///         Khoáº£n nÃ y VáºªN Ä‘Æ°á»£c tÃ­nh vÃ o `totalOwedInterest` â€” bank khÃ´ng thoÃ¡i thÃ¡c.
     mapping(address user => uint256 amount) public pendingInterestOf;
 
-    // ═══════════════════════════ Modifiers ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Modifiers â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Chặn mọi LUỒNG NGƯỜI DÙNG khi hệ thống đang pause (D2/D3).
-    ///         Admin ops không bị chặn (có thể sửa cấu hình khi pause).
+    /// @notice Cháº·n má»i LUá»’NG NGÆ¯á»œI DÃ™NG khi há»‡ thá»‘ng Ä‘ang pause (D2/D3).
+    ///         Admin ops khÃ´ng bá»‹ cháº·n (cÃ³ thá»ƒ sá»­a cáº¥u hÃ¬nh khi pause).
     modifier whenSystemRunning() {
         if (vault.isPaused()) revert SC_SystemPaused();
         _;
     }
 
-    /// @notice Deposit phải còn NFT đang sống và msg.sender đang giữ nó (D13).
+    /// @notice Deposit pháº£i cÃ²n NFT Ä‘ang sá»‘ng vÃ  msg.sender Ä‘ang giá»¯ nÃ³ (D13).
     modifier onlyDepositOwner(uint256 depositId) {
         if (ownerOf(depositId) != msg.sender) revert SC_NotDepositOwner();
         _;
     }
 
-    // ═══════════════════════════ Constructor ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Constructor â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     /// @param _token USDC test (6 decimals).
-    /// @param _vault VaultManager đã deploy trước (link theo thứ tự deploy).
-    constructor(address _token, address _vault)
+    /// @param _vault VaultManager Ä‘Ã£ deploy trÆ°á»›c (link theo thá»© tá»± deploy).
+    /// @param _daySeconds Sá»‘ giÃ¢y trong 1 "ngÃ y" (86400 cho mainnet, 1 cho test).
+    constructor(address _token, address _vault, uint256 _daySeconds)
         ERC721("Bank Deposit Certificate", "DEP")
         Ownable(msg.sender)
     {
         if (_token == address(0) || _vault == address(0)) revert SC_InvalidPlan();
+        if (_daySeconds == 0 || _daySeconds > 1 days) revert SC_InvalidPlan();
+
         token = IERC20(_token);
         vault = IVaultManager(_vault);
+        DAY_SECONDS = _daySeconds;
+        GRACE_PERIOD = 3 * _daySeconds;
+        EMERGENCY_DELAY = 7 * _daySeconds;
+        YEAR_SECONDS = 365 * _daySeconds;
+
         nextPlanId = 1;
         nextDepositId = 1;
     }
 
-    // ═══════════════════════════ Admin ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Admin â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Admin tạo một saving plan mới.
-    /// @dev Plan được tạo ở trạng thái enabled = true; admin có thể `disablePlan`.
+    /// @notice Admin táº¡o má»™t saving plan má»›i.
+    /// @dev Plan Ä‘Æ°á»£c táº¡o á»Ÿ tráº¡ng thÃ¡i enabled = true; admin cÃ³ thá»ƒ `disablePlan`.
     function createPlan(
         uint256 tenorDays,
         uint256 aprBps,
@@ -223,8 +232,8 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         emit PlanCreated(planId, tenorDays, aprBps);
     }
 
-    /// @notice Sửa APR của plan. Chỉ ảnh hưởng deposit MỚI — các deposit cũ
-    ///         giữ nguyên snapshot (ADR-002).
+    /// @notice Sá»­a APR cá»§a plan. Chá»‰ áº£nh hÆ°á»Ÿng deposit Má»šI â€” cÃ¡c deposit cÅ©
+    ///         giá»¯ nguyÃªn snapshot (ADR-002).
     function updatePlan(uint256 planId, uint256 newAprBps) external onlyOwner {
         if (!_planExists(planId)) revert SC_PlanUnknown();
         if (newAprBps == 0 || newAprBps > BPS_DIVISOR) revert SC_InvalidPlan();
@@ -233,8 +242,8 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         emit PlanUpdated(planId, newAprBps);
     }
 
-    /// @notice Bật/lật trạng thái nhận deposit mới.
-    /// @dev KHÔNG ảnh hưởng ability rút/t Renew của các deposit Active (Q6).
+    /// @notice Báº­t/láº­t tráº¡ng thÃ¡i nháº­n deposit má»›i.
+    /// @dev KHÃ”NG áº£nh hÆ°á»Ÿng ability rÃºt/t Renew cá»§a cÃ¡c deposit Active (Q6).
     function setPlanEnabled(uint256 planId, bool state) external onlyOwner {
         if (!_planExists(planId)) revert SC_PlanUnknown();
         _plans[planId].enabled = state;
@@ -242,36 +251,36 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         emit PlanEnabled(planId, state);
     }
 
-    // ═══════════════════════════ Plant info ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Plant info â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Số plan đã tạo.
+    /// @notice Sá»‘ plan Ä‘Ã£ táº¡o.
     function planCount() external view returns (uint256) {
         return nextPlanId - 1;
     }
 
-    /// @notice Số deposit đã mở (kể cả đã kết thúc).
+    /// @notice Sá»‘ deposit Ä‘Ã£ má»Ÿ (ká»ƒ cáº£ Ä‘Ã£ káº¿t thÃºc).
     function depositCount() external view returns (uint256) {
         return nextDepositId - 1;
     }
 
-    /// @notice Đọc plan, revert nếu id vô danh.
+    /// @notice Äá»c plan, revert náº¿u id vÃ´ danh.
     function getPlan(uint256 planId) external view returns (Plan memory) {
         if (!_planExists(planId)) revert SC_PlanUnknown();
         return _plans[planId];
     }
 
-    /// @notice Đọc deposit, revert nếu id vô danh. Trả về status hiện thời.
+    /// @notice Äá»c deposit, revert náº¿u id vÃ´ danh. Tráº£ vá» status hiá»‡n thá»i.
     function getDeposit(uint256 depositId) external view returns (DepositInfo memory) {
         if (!_depositExists(depositId)) revert SC_UnknownDeposit();
         return _deposits[depositId];
     }
 
-    // ═══════════════════════════ User flow 1: openDeposit ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• User flow 1: openDeposit â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice User mở deposit: chomp USDC → SNAPSHOT APR/penalty → mint NFT → cam kết lãi với vault (C2).
-    /// @dev CEI + nonReentrant: mọi effect sổ trước_TRANSFER; external call sau cùng.
-    ///      reentrancy qua token transfer hoặc NFT safeMint đều bị `nonReentrant` chặn.
-    /// @return depositId id của deposit mới vừa mở.
+    /// @notice User má»Ÿ deposit: chomp USDC â†’ SNAPSHOT APR/penalty â†’ mint NFT â†’ cam káº¿t lÃ£i vá»›i vault (C2).
+    /// @dev CEI + nonReentrant: má»i effect sá»• trÆ°á»›c_TRANSFER; external call sau cÃ¹ng.
+    ///      reentrancy qua token transfer hoáº·c NFT safeMint Ä‘á»u bá»‹ `nonReentrant` cháº·n.
+    /// @return depositId id cá»§a deposit má»›i vá»«a má»Ÿ.
     function openDeposit(uint256 planId, uint256 amount)
         external
         nonReentrant
@@ -286,27 +295,27 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         if (plan.maxDeposit != 0 && amount > plan.maxDeposit) revert SC_AmountTooHigh(plan.maxDeposit);
         if (amount > MAX_PRINCIPAL) revert SC_AmountTooLarge();
 
-        // l_snapshot trước khi đụng vào state khác (thử nghĩa APR/penalty)
+        // l_snapshot trÆ°á»›c khi Ä‘á»¥ng vÃ o state khÃ¡c (thá»­ nghÄ©a APR/penalty)
         uint256 openingApr = plan.aprBps;
         uint256 openingPenalty = plan.earlyWithdrawPenaltyBps;
         uint256 tenorDays = plan.tenorDays;
 
         depositId = _newDeposit(msg.sender, planId, amount, openingApr, openingPenalty, tenorDays);
 
-        // C2: cam kết lãi với vault (tính theo toàn bộ tenor — ước lượng)
-        uint256 owed = _computeInterestBySeconds(amount * tenorDays * _DAY, openingApr);
+        // C2: cam káº¿t lÃ£i vá»›i vault (tÃ­nh theo toÃ n bá»™ tenor â€” Æ°á»›c lÆ°á»£ng)
+        uint256 owed = _computeInterestBySeconds(amount * tenorDays * DAY_SECONDS, openingApr);
         token.safeTransferFrom(msg.sender, address(this), amount);
         vault.increaseOwedInterest(owed);
     }
 
-    // ═══════════════════════════ User flow 2: withdrawAtMaturity ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• User flow 2: withdrawAtMaturity â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice User rút principal + lãi (lãi trả từ vault) khi đủ maturityAt.
-    /// @dev C1: nếu VAULT KHÔNG ĐỦ LÃI → trả principal đầy đủ, lãi chuyển vào
-    ///      `pendingInterestOf` để user claim sau (T3.1) — bank vẫn NỢ (không giảm
-    ///      `totalOwedInterest` khi defer). Nếu đủ → trả lãi + giảm owed (C2).
-    ///      CEI: set status + burn NFT TRƯỚC khi gọi external (chặn reentrancy + double withdraw).
-    /// @return paidInterest số lãi user thực nhận NGAY (0 nếu defer — D9).
+    /// @notice User rÃºt principal + lÃ£i (lÃ£i tráº£ tá»« vault) khi Ä‘á»§ maturityAt.
+    /// @dev C1: náº¿u VAULT KHÃ”NG Äá»¦ LÃƒI â†’ tráº£ principal Ä‘áº§y Ä‘á»§, lÃ£i chuyá»ƒn vÃ o
+    ///      `pendingInterestOf` Ä‘á»ƒ user claim sau (T3.1) â€” bank váº«n Ná»¢ (khÃ´ng giáº£m
+    ///      `totalOwedInterest` khi defer). Náº¿u Ä‘á»§ â†’ tráº£ lÃ£i + giáº£m owed (C2).
+    ///      CEI: set status + burn NFT TRÆ¯á»šC khi gá»i external (cháº·n reentrancy + double withdraw).
+    /// @return paidInterest sá»‘ lÃ£i user thá»±c nháº­n NGAY (0 náº¿u defer â€” D9).
     function withdrawAtMaturity(uint256 depositId)
         external
         nonReentrant
@@ -322,18 +331,18 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         uint256 principal = d.principal;
         uint256 interest = _computeInterestBySeconds(d.principalSeconds, d.aprBpsAtOpen);
 
-        d.status = DepositStatus.Withdrawn; // CEI: khó động state từ ngoài
-        _burn(depositId); // D1: certificate đã tất toán → burn
+        d.status = DepositStatus.Withdrawn; // CEI: khÃ³ Ä‘á»™ng state tá»« ngoÃ i
+        _burn(depositId); // D1: certificate Ä‘Ã£ táº¥t toÃ¡n â†’ burn
 
         if (interest != 0) {
             if (vault.getVaultBalance() >= interest) {
-                // ── Path A: vault đủ → trả lãi ngay, giải ngân cam kết (C2) ──
+                // â”€â”€ Path A: vault Ä‘á»§ â†’ tráº£ lÃ£i ngay, giáº£i ngÃ¢n cam káº¿t (C2) â”€â”€
                 vault.payInterest(depositor, interest);
                 vault.decreaseOwedInterest(interest);
                 paidInterest = interest;
             } else {
-                // ── Path B (C1): vault thiếu → PRINCIPAL vẫn trả đủ;
-                //    lãi ghi nợ vào pending, owed GIỮ NGUYÊN (bank còn nợ user)
+                // â”€â”€ Path B (C1): vault thiáº¿u â†’ PRINCIPAL váº«n tráº£ Ä‘á»§;
+                //    lÃ£i ghi ná»£ vÃ o pending, owed GIá»® NGUYÃŠN (bank cÃ²n ná»£ user)
                 pendingInterestOf[depositor] += interest;
                 emit InterestDeferred(depositId, depositor, interest);
             }
@@ -344,30 +353,30 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         return paidInterest;
     }
 
-    // ═══════════════════════════ Bonus C1: claim lãi bị trì hoãn ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Bonus C1: claim lÃ£i bá»‹ trÃ¬ hoÃ£n â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice User claim lãi NỢ đã ghi nhận từ `InterestDeferred` (C1).
-    /// @dev CEI: zero pending TRƯỚC external call — nếu transfer revert thì pending
-    ///      cũng rollback về giá trị cũ. Vault phải đủ; nếu không, payInterest revert
-    ///      `VM_InsufficientBalance` và pending giữ nguyên (user thử lại sau).
-    ///      Bị pause chặn (D3 — un-pause rồi mới claim).
+    /// @notice User claim lÃ£i Ná»¢ Ä‘Ã£ ghi nháº­n tá»« `InterestDeferred` (C1).
+    /// @dev CEI: zero pending TRÆ¯á»šC external call â€” náº¿u transfer revert thÃ¬ pending
+    ///      cÅ©ng rollback vá» giÃ¡ trá»‹ cÅ©. Vault pháº£i Ä‘á»§; náº¿u khÃ´ng, payInterest revert
+    ///      `VM_InsufficientBalance` vÃ  pending giá»¯ nguyÃªn (user thá»­ láº¡i sau).
+    ///      Bá»‹ pause cháº·n (D3 â€” un-pause rá»“i má»›i claim).
     function claimPendingInterest() external nonReentrant whenSystemRunning {
         uint256 amount = pendingInterestOf[msg.sender];
         if (amount == 0) revert SC_NothingPending();
 
         pendingInterestOf[msg.sender] = 0; // CEI: zero-before-transfer
         vault.payInterest(msg.sender, amount);
-        vault.decreaseOwedInterest(amount); // C2: giải ngân cam kết cuối cùng
+        vault.decreaseOwedInterest(amount); // C2: giáº£i ngÃ¢n cam káº¿t cuá»‘i cÃ¹ng
 
         emit PendingInterestClaimed(msg.sender, amount);
     }
 
-    // ═══════════════════════════ User flow 3: earlyWithdraw ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• User flow 3: earlyWithdraw â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Rút sớm: KHÔNG có lãi, bị trừ penalty → penalty về feeReceiver.
-    /// @dev Durations: status sau cùng Withdrawn; penalty được chuyển vào vault rồi
-    ///      VM forward cho feeReceiver. totalOwedInterest giảm FULL còn lại (C2).
-    /// @return refunded số user nhận = principal - penalty.
+    /// @notice RÃºt sá»›m: KHÃ”NG cÃ³ lÃ£i, bá»‹ trá»« penalty â†’ penalty vá» feeReceiver.
+    /// @dev Durations: status sau cÃ¹ng Withdrawn; penalty Ä‘Æ°á»£c chuyá»ƒn vÃ o vault rá»“i
+    ///      VM forward cho feeReceiver. totalOwedInterest giáº£m FULL cÃ²n láº¡i (C2).
+    /// @return refunded sá»‘ user nháº­n = principal - penalty.
     function earlyWithdraw(uint256 depositId)
         external
         nonReentrant
@@ -396,19 +405,19 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
             emit PenaltyCharged(depositId, depositor, penalty);
         }
 
-        // principal gốc ở đây để làm lịch sử; theo spec event - interest = 0 với early
+        // principal gá»‘c á»Ÿ Ä‘Ã¢y Ä‘á»ƒ lÃ m lá»‹ch sá»­; theo spec event - interest = 0 vá»›i early
         emit Withdrawn(depositId, depositor, principal - penalty, 0, true);
         return (principal - penalty, penalty);
     }
 
-    // ═══════════════════════════ Bonus C3: partial early withdraw ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Bonus C3: partial early withdraw â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Rút MỘT PHẦN principal sớm: rút `amount` (bị penalty trên chính amount),
-    ///         phần còn lại GIỮ deposit Active và SINH LÃI ĐÚNG như cũ đến maturity.
-    /// @dev D4 (weighted accrual): gỡ `amount × (maturityAt - now)` khỏi `principalSeconds`
-    ///      — NFT và status giữ nguyên (không burn). amount == principal → phải dùng
+    /// @notice RÃºt Má»˜T PHáº¦N principal sá»›m: rÃºt `amount` (bá»‹ penalty trÃªn chÃ­nh amount),
+    ///         pháº§n cÃ²n láº¡i GIá»® deposit Active vÃ  SINH LÃƒI ÄÃšNG nhÆ° cÅ© Ä‘áº¿n maturity.
+    /// @dev D4 (weighted accrual): gá»¡ `amount Ã— (maturityAt - now)` khá»i `principalSeconds`
+    ///      â€” NFT vÃ  status giá»¯ nguyÃªn (khÃ´ng burn). amount == principal â†’ pháº£i dÃ¹ng
     ///      `earlyWithdraw` (revert `SC_AmountTooHigh`).
-    /// @return refunded = amount - penalty, penalty trên chính `amount`.
+    /// @return refunded = amount - penalty, penalty trÃªn chÃ­nh `amount`.
     function partialEarlyWithdraw(uint256 depositId, uint256 amount)
         external
         nonReentrant
@@ -424,13 +433,13 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
 
         uint256 remaining = d.maturityAt - block.timestamp;
         penalty = _earlyPenalty(amount, d.penaltyBpsAtOpen);
-        // lãi có liên quan chunk đang bỏ đi (weighted accrual, D4)
+        // lÃ£i cÃ³ liÃªn quan chunk Ä‘ang bá» Ä‘i (weighted accrual, D4)
         uint256 owedOnChunk = _computeInterestBySeconds(amount * remaining, d.aprBpsAtOpen);
 
         d.principal -= amount;
         d.principalSeconds -= amount * remaining;
 
-        vault.decreaseOwedInterest(owedOnChunk); // C2: chunk thu hẹp → cam kết giảm đúng
+        vault.decreaseOwedInterest(owedOnChunk); // C2: chunk thu háº¹p â†’ cam káº¿t giáº£m Ä‘Ãºng
 
         token.safeTransfer(msg.sender, amount - penalty);
         if (penalty != 0) {
@@ -444,12 +453,12 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         return (refunded, penalty);
     }
 
-    // ═══════════════════════════ Bonus C4: top-up ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Bonus C4: top-up â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Nạp thêm `amount` vào deposit Active TRƯỚC maturity. Lãi cộng dồn
-    ///         theo weighted accrual (D4): `principalSeconds += amount × (maturityAt - now)`.
-    /// @dev owed tăng đúng lãi chunk mới sẽ sinh; plan min/max KHÔNG áp dụng top-up
-    ///      (chỉ cận MAX_PRINCIPAL chống overflow). Lưu ý cũng bị pause chặn (D3).
+    /// @notice Náº¡p thÃªm `amount` vÃ o deposit Active TRÆ¯á»šC maturity. LÃ£i cá»™ng dá»“n
+    ///         theo weighted accrual (D4): `principalSeconds += amount Ã— (maturityAt - now)`.
+    /// @dev owed tÄƒng Ä‘Ãºng lÃ£i chunk má»›i sáº½ sinh; plan min/max KHÃ”NG Ã¡p dá»¥ng top-up
+    ///      (chá»‰ cáº­n MAX_PRINCIPAL chá»‘ng overflow). LÆ°u Ã½ cÅ©ng bá»‹ pause cháº·n (D3).
     function topUpDeposit(uint256 depositId, uint256 amount) external nonReentrant whenSystemRunning onlyDepositOwner(depositId) {
         DepositInfo storage d = _deposits[depositId];
         if (d.status != DepositStatus.Active) revert SC_DepositNotActive();
@@ -464,17 +473,17 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         d.principalSeconds += amount * remaining;
 
         token.safeTransferFrom(msg.sender, address(this), amount);
-        vault.increaseOwedInterest(owedOnChunk); // C2: chunk mới → cam kết tăng đúng
+        vault.increaseOwedInterest(owedOnChunk); // C2: chunk má»›i â†’ cam káº¿t tÄƒng Ä‘Ãºng
 
         emit DepositToppedUp(depositId, msg.sender, amount, d.principal);
     }
 
-    // ═══════════════════════════ Bonus C5: emergency withdraw ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Bonus C5: emergency withdraw â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Kéo tiền principal ra khi hệ thống pause kéo dài ≥ 7 ngày (EMERGENCY_DELAY).
-    /// @dev LÀ CỬA THOÁT DUY NHẤT khi paused (D3) → KHÔNG dùng `whenSystemRunning`,
-    ///      ngược lại require đang pause. Trả CHỈ principal (không lãi, không penalty).
-    ///      status → Withdrawn + burn NFT + giảm owed FULL (C2).
+    /// @notice KÃ©o tiá»n principal ra khi há»‡ thá»‘ng pause kÃ©o dÃ i â‰¥ 7 ngÃ y (EMERGENCY_DELAY).
+    /// @dev LÃ€ Cá»¬A THOÃT DUY NHáº¤T khi paused (D3) â†’ KHÃ”NG dÃ¹ng `whenSystemRunning`,
+    ///      ngÆ°á»£c láº¡i require Ä‘ang pause. Tráº£ CHá»ˆ principal (khÃ´ng lÃ£i, khÃ´ng penalty).
+    ///      status â†’ Withdrawn + burn NFT + giáº£m owed FULL (C2).
     function emergencyWithdraw(uint256 depositId)
         external
         nonReentrant
@@ -494,19 +503,19 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         d.status = DepositStatus.Withdrawn;
         _burn(depositId);
 
-        vault.decreaseOwedInterest(owedInterest); // C2: deposit biến mất → cam kết xóa
+        vault.decreaseOwedInterest(owedInterest); // C2: deposit biáº¿n máº¥t â†’ cam káº¿t xÃ³a
         token.safeTransfer(depositor, principal);
 
         emit EmergencyWithdrawn(depositId, depositor, principal);
         return principal;
     }
 
-    // ═══════════════════════════ User flow 4: renewDeposit (manual) ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• User flow 4: renewDeposit (manual) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Tái tục thủ công: lãi cũ compound vào principal, mở bằng plan MỚI (rate mới).
-    /// @dev oldDeposit status → ManualRenewed + burn NFT cũ; deposit mới mint NFT.
-    ///      Khoan: trong renew, lãi chuyển vault → SC (chứa principal pool) —
-    ///      do đó mint/payInterest từ vault sang SC contract address (msg.sender của VM là SC).
+    /// @notice TÃ¡i tá»¥c thá»§ cÃ´ng: lÃ£i cÅ© compound vÃ o principal, má»Ÿ báº±ng plan Má»šI (rate má»›i).
+    /// @dev oldDeposit status â†’ ManualRenewed + burn NFT cÅ©; deposit má»›i mint NFT.
+    ///      Khoan: trong renew, lÃ£i chuyá»ƒn vault â†’ SC (chá»©a principal pool) â€”
+    ///      do Ä‘Ã³ mint/payInterest tá»« vault sang SC contract address (msg.sender cá»§a VM lÃ  SC).
     function renewDeposit(uint256 depositId, uint256 newPlanId)
         external
         nonReentrant
@@ -522,13 +531,13 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         if (!newPlan.enabled) revert SC_PlanNotEnabled();
 
         address depositor = ownerOf(depositId);
-        // ─── lấy giá trị vào memory để không rơi vô rẻ khi mutate status ───
+        // â”€â”€â”€ láº¥y giÃ¡ trá»‹ vÃ o memory Ä‘á»ƒ khÃ´ng rÆ¡i vÃ´ ráº» khi mutate status â”€â”€â”€
         uint256 oldOwed = _computeInterestBySeconds(d.principalSeconds, d.aprBpsAtOpen);
         uint256 newPrincipal = d.principal + oldOwed;
         uint256 newApr = newPlan.aprBps;
         uint256 newPenalty = newPlan.earlyWithdrawPenaltyBps;
         uint256 newTenor = newPlan.tenorDays;
-        uint256 newOwed = _computeInterestBySeconds(newPrincipal * newTenor * _DAY, newApr);
+        uint256 newOwed = _computeInterestBySeconds(newPrincipal * newTenor * DAY_SECONDS, newApr);
 
         d.status = DepositStatus.ManualRenewed; // old NULL-status
         _burn(depositId);
@@ -545,12 +554,12 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         return newDepositId;
     }
 
-    // ═══════════════════════════ User flow 5: autoRenewDeposit (bot) ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• User flow 5: autoRenewDeposit (bot) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Bot (hoặc AI nào) gọi sau khi hết grace period = maturityAt + 3 ngày (biến thể).
-    /// @dev Rule #4 của đề: lock Original APR + same tenor (không đổi theo plan).
-    ///      Plan bị disable cũng ok — dùng dữ liệu SNAPSHOT từ deposit (Q6,ADR).
-    ///      Đó là lý do không check plan.enabled.
+    /// @notice Bot (hoáº·c AI nÃ o) gá»i sau khi háº¿t grace period = maturityAt + 3 ngÃ y (biáº¿n thá»ƒ).
+    /// @dev Rule #4 cá»§a Ä‘á»: lock Original APR + same tenor (khÃ´ng Ä‘á»•i theo plan).
+    ///      Plan bá»‹ disable cÅ©ng ok â€” dÃ¹ng dá»¯ liá»‡u SNAPSHOT tá»« deposit (Q6,ADR).
+    ///      ÄÃ³ lÃ  lÃ½ do khÃ´ng check plan.enabled.
     function autoRenewDeposit(uint256 depositId)
         external
         nonReentrant
@@ -562,10 +571,10 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         if (block.timestamp < d.maturityAt + GRACE_PERIOD) revert SC_TooLate();
 
         address depositor = ownerOf(depositId);
-        uint256 oldApr = d.aprBpsAtOpen; // lock năm nguyên ADR-003
+        uint256 oldApr = d.aprBpsAtOpen; // lock nÄƒm nguyÃªn ADR-003
         uint256 oldOwed = _computeInterestBySeconds(d.principalSeconds, d.aprBpsAtOpen);
         uint256 newPrincipal = d.principal + oldOwed;
-        uint256 newOwed = _computeInterestBySeconds(newPrincipal * d.tenorDays * _DAY, oldApr);
+        uint256 newOwed = _computeInterestBySeconds(newPrincipal * d.tenorDays * DAY_SECONDS, oldApr);
         uint256 newPenalty = d.penaltyBpsAtOpen;
         uint256 planIdOld = d.planId;
         uint256 tenorDaysOld = d.tenorDays;
@@ -582,19 +591,19 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         emit Renewed(depositId, newDepositId, newPrincipal, planIdOld);
     }
 
-    // ═══════════════════════════ Views ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Views â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    /// @notice Lãi ước tính hiện tại của một deposit (rounding down, D9).
+    /// @notice LÃ£i Æ°á»›c tÃ­nh hiá»‡n táº¡i cá»§a má»™t deposit (rounding down, D9).
     function previewInterest(uint256 depositId) external view returns (uint256 interest) {
         if (!_depositExists(depositId)) revert SC_UnknownDeposit();
         DepositInfo storage d = _deposits[depositId];
         return _computeInterestBySeconds(d.principalSeconds, d.aprBpsAtOpen);
     }
 
-    /// @notice Preview đủ thông tin khi rút/t Renew để frontend hiển thị.
-    /// @return principal principal còn lại, maturityAt thời điểm đáo hạn,
-    ///         interest lãi nếu rút ở maturityAt (0 nếu chưa), penalty lãi sẽ bị trừ nếu rút Early,
-    ///         status trạng thái hiện tại.
+    /// @notice Preview Ä‘á»§ thÃ´ng tin khi rÃºt/t Renew Ä‘á»ƒ frontend hiá»ƒn thá»‹.
+    /// @return principal principal cÃ²n láº¡i, maturityAt thá»i Ä‘iá»ƒm Ä‘Ã¡o háº¡n,
+    ///         interest lÃ£i náº¿u rÃºt á»Ÿ maturityAt (0 náº¿u chÆ°a), penalty lÃ£i sáº½ bá»‹ trá»« náº¿u rÃºt Early,
+    ///         status tráº¡ng thÃ¡i hiá»‡n táº¡i.
     function previewExit(uint256 depositId)
         external
         view
@@ -617,23 +626,23 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         amountIfEarly = d.principal - penalty;
     }
 
-    /// @notice Đã qua grace period & chưa autoRenew hay chưa? Bot dùng để quét.
+    /// @notice ÄÃ£ qua grace period & chÆ°a autoRenew hay chÆ°a? Bot dÃ¹ng Ä‘á»ƒ quÃ©t.
     function canAutoRenew(uint256 depositId) external view returns (bool) {
         if (!_depositExists(depositId)) return false;
         DepositInfo storage d = _deposits[depositId];
         return d.status == DepositStatus.Active && block.timestamp >= d.maturityAt + GRACE_PERIOD;
     }
 
-    /// @notice Deposit Active đã đến hạn (kèm chỉ thị hiển thị cho frontend).
+    /// @notice Deposit Active Ä‘Ã£ Ä‘áº¿n háº¡n (kÃ¨m chá»‰ thá»‹ hiá»ƒn thá»‹ cho frontend).
     function isMatured(uint256 depositId) external view returns (bool) {
         if (!_depositExists(depositId)) revert SC_UnknownDeposit();
         DepositInfo storage d = _deposits[depositId];
         return d.status == DepositStatus.Active && block.timestamp >= d.maturityAt;
     }
 
-    /// @notice Danh sách CÁC deposit (NFT) người dùng đang sở hữu — dùng ERC721Enumerable.
-    /// @dev OZ v5 không có `tokensOfOwner` → tự quét `tokenOfOwnerByIndex`.
-    ///      NFT bị burn khi deposit tất toán (D1) nên kết quả chỉ chứa deposit "sống".
+    /// @notice Danh sÃ¡ch CÃC deposit (NFT) ngÆ°á»i dÃ¹ng Ä‘ang sá»Ÿ há»¯u â€” dÃ¹ng ERC721Enumerable.
+    /// @dev OZ v5 khÃ´ng cÃ³ `tokensOfOwner` â†’ tá»± quÃ©t `tokenOfOwnerByIndex`.
+    ///      NFT bá»‹ burn khi deposit táº¥t toÃ¡n (D1) nÃªn káº¿t quáº£ chá»‰ chá»©a deposit "sá»‘ng".
     function getUserDepositIds(address user) external view returns (uint256[] memory ids) {
         uint256 count = balanceOf(user);
         ids = new uint256[](count);
@@ -643,16 +652,16 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         return ids;
     }
 
-    // ═══════════════════════════ Internal helpers ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Internal helpers â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     function _computeInterestBySeconds(uint256 principalSeconds, uint256 aprBps)
         internal
-        pure
+        view
         returns (uint256)
     {
-        // Q4/D9: multiply-before-divide giữ precision; dust (< 1 unit) rơi về vault.
+        // Q4/D9: multiply-before-divide giá»¯ precision; dust (< 1 unit) rÆ¡i vá» vault.
         unchecked {
-            // Safe: MAX_PRINCIPAL chặn overflow (D10)
+            // Safe: MAX_PRINCIPAL cháº·n overflow (D10)
             return (principalSeconds * aprBps) / (YEAR_SECONDS * BPS_DIVISOR);
         }
     }
@@ -664,7 +673,7 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         }
     }
 
-    /// @notice Điều kiện tồn tại của plan (bắt đầu từ 1).
+    /// @notice Äiá»u kiá»‡n tá»“n táº¡i cá»§a plan (báº¯t Ä‘áº§u tá»« 1).
     function _planExists(uint256 planId) internal view returns (bool) {
         return planId != 0 && planId < nextPlanId;
     }
@@ -673,7 +682,7 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         return depositId != 0 && depositId < nextDepositId;
     }
 
-    /// @notice Tạo DepositInfo và mint NFT (cái nhé: chưa GHI cam kết owe — caller tự tính).
+    /// @notice Táº¡o DepositInfo vÃ  mint NFT (cÃ¡i nhÃ©: chÆ°a GHI cam káº¿t owe â€” caller tá»± tÃ­nh).
     function _newDeposit(
         address depositor,
         uint256 planId,
@@ -686,9 +695,9 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         DepositInfo storage d = _deposits[depositId];
         d.planId = planId;
         d.principal = principal;
-        d.principalSeconds = principal * tenorDays * _DAY;
+        d.principalSeconds = principal * tenorDays * DAY_SECONDS;
         d.startAt = block.timestamp;
-        d.maturityAt = block.timestamp + tenorDays * _DAY;
+        d.maturityAt = block.timestamp + tenorDays * DAY_SECONDS;
         d.aprBpsAtOpen = aprBps;
         d.penaltyBpsAtOpen = penaltyBps;
         d.tenorDays = tenorDays;
@@ -699,7 +708,7 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         emit DepositOpened(depositId, depositor, planId, principal, d.maturityAt, aprBps);
     }
 
-    // ═══════════════════════════ ERC721Enumerable plumbing (OZ v5) ═══════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ERC721Enumerable plumbing (OZ v5) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     function _update(address to, uint256 tokenId, address auth)
         internal
@@ -725,3 +734,4 @@ contract SavingCore is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
         return super.supportsInterface(interfaceId);
     }
 }
+

@@ -140,7 +140,7 @@ export default function Navbar() {
                 </span>
               )}
               {balance !== null && (
-                <span className="num text-sm font-display text-secondary hidden xl:inline whitespace-nowrap">{fmtToken(balance, 2)}</span>
+                <span className="num text-xs sm:text-sm font-display text-secondary whitespace-nowrap">{fmtToken(balance, 2)}</span>
               )}
               {isTestChain && address && (
                 <button
@@ -283,6 +283,9 @@ export default function Navbar() {
             </Link>
 
             <div className="flex items-center gap-1.5 min-w-0">
+              {balance !== null && (
+                <span className="num text-xs font-display text-secondary whitespace-nowrap">{fmtToken(balance, 2)}</span>
+              )}
               {isTestChain && address && (
                 <button
                   type="button"

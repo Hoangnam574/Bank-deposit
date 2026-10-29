@@ -17,6 +17,8 @@ const VI = {
   "common.cancel": "Hủy",
   "common.reload": "Reload trang",
   "common.dayUnit": "ngày",
+  "common.notice": "Thông báo",
+  "common.ok": "Đồng ý",
 
   /* app shell */
   "app.adminChecking": "Đang kiểm tra quyền quản trị…",
@@ -59,6 +61,7 @@ const VI = {
   "chain.modalAria": "Chọn mạng",
   "chain.guardLine": "Ví đang ở",
   "chain.guardReq": "— ứng dụng cần Hardhat Local (31337) hoặc Sepolia (11155111).",
+  "chain.testModeBanner": "Chế độ test: 1 ngày = {s} giây",
   "chain.guardHint":
     "Bấm vào pill tên mạng ở góc trên bên phải (kể cả khi mạng lạ) để chọn lại mạng.",
 
@@ -201,6 +204,8 @@ const VI = {
   "dep.filterClosed": "Đã đóng",
   "dep.filterAria": "Lọc sổ tiết kiệm",
   "dep.empty": "Bạn chưa có sổ tiết kiệm nào",
+  "dep.emptyActive": "Bạn không có sổ nào đang chạy",
+  "dep.emptyClosed": "Chưa có sổ nào đã đóng",
   "dep.emptyCta": "Mở sổ đầu tiên",
   "dep.loadError": "Đọc dữ liệu lỗi — triển khai/seed trước và kết nối ví đúng mạng",
   "dep.historyEyebrow": "Lịch sử — sổ đã tất toán",
@@ -330,6 +335,12 @@ const VI = {
   "detail.approveTopupTitle":
     "Bước 1: Approve — cho phép hợp đồng rút USDC từ ví khi bạn nạp thêm. ERC-20 bắt buộc bước này trước khi nạp thêm; chỉ cần làm 1 lần cho số tiền đó.",
   "detail.btnApprove": "1. Approve ({amount} USDC)",
+  "detail.topupApproveTitle": "Cần cấp quyền (Approve) USDC",
+  "detail.topupApproveMsg": "Để nạp thêm {amount} USDC vào sổ #{id}, bạn cần cấp quyền (Approve) cho hợp đồng SavingCore trừ số USDC này từ ví của bạn. Bạn có muốn thực hiện cấp quyền trên MetaMask ngay bây giờ không?",
+  "detail.topupApproveOk": "Cấp quyền ngay",
+  "detail.maturedNoTopup": "Sổ đã đáo hạn — không thể nạp thêm gốc, chỉ có thể rút hoặc tái ký.",
+  "detail.notMaturedRenew": "Sổ chưa đáo hạn — chỉ có thể tái ký khi đã đến ngày đáo hạn.",
+  "og.afterGrace": "đáo hạn + {grace}",
   "detail.txApprove": "Approve USDC (nạp thêm)",
   "detail.needAmount": "Nhập số lượng ở trên",
   "detail.ltPrincipal": "Phải nhỏ hơn gốc",
@@ -467,6 +478,7 @@ const VI = {
   "countdown.dh": "{d} ngày {h} giờ",
   "countdown.hm": "{h} giờ {m} phút",
   "countdown.ms": "{m} phút {s} giây",
+  "countdown.sec": "{s} giây",
 
   /* hooks */
   "plans.error": "Không đọc được danh sách kỳ hạn — kiểm tra mạng và bản triển khai",
@@ -508,6 +520,8 @@ const EN: Record<TKey, string> = {
   "common.cancel": "Cancel",
   "common.reload": "Reload page",
   "common.dayUnit": "days",
+  "common.notice": "Notice",
+  "common.ok": "OK",
 
   "app.adminChecking": "Checking admin rights…",
   "app.notFound": "Page not found —",
@@ -547,6 +561,7 @@ const EN: Record<TKey, string> = {
   "chain.modalAria": "Choose network",
   "chain.guardLine": "Your wallet is on",
   "chain.guardReq": "— this app requires Hardhat Local (31337) or Sepolia (11155111).",
+  "chain.testModeBanner": "Test mode: 1 day = {s}s",
   "chain.guardHint":
     "Click the network pill in the top-right corner (even for an unknown network) to switch.",
 
@@ -685,6 +700,8 @@ const EN: Record<TKey, string> = {
   "dep.filterClosed": "Closed",
   "dep.filterAria": "Filter deposits",
   "dep.empty": "No deposits yet",
+  "dep.emptyActive": "No active deposits found",
+  "dep.emptyClosed": "No closed deposits found",
   "dep.emptyCta": "Open your first deposit",
   "dep.loadError":
     "Failed to read data — deploy/seed first and connect on the right network",
@@ -815,6 +832,12 @@ const EN: Record<TKey, string> = {
   "detail.approveTopupTitle":
     "Step 1: Approve — lets the contract draw USDC from your wallet on top-up. ERC-20 requires this before a top-up; needed once per amount.",
   "detail.btnApprove": "1. Approve ({amount} USDC)",
+  "detail.topupApproveTitle": "USDC Approval Required",
+  "detail.topupApproveMsg": "To top up {amount} USDC into deposit #{id}, you need to approve SavingCore to transfer this amount from your wallet. Would you like to approve via MetaMask now?",
+  "detail.topupApproveOk": "Approve now",
+  "detail.maturedNoTopup": "Deposit has matured — cannot top up, only withdraw or renew.",
+  "detail.notMaturedRenew": "Deposit has not matured yet — renewal is only available after maturity.",
+  "og.afterGrace": "maturity + {grace}",
   "detail.txApprove": "Approve USDC (top-up)",
   "detail.needAmount": "Enter an amount above",
   "detail.ltPrincipal": "Must be below the principal",
@@ -946,6 +969,7 @@ const EN: Record<TKey, string> = {
   "countdown.dh": "{d}d {h}h",
   "countdown.hm": "{h}h {m}m",
   "countdown.ms": "{m}m {s}s",
+  "countdown.sec": "{s}s",
 
   "plans.error": "Failed to read plans — check the network and deployment",
 

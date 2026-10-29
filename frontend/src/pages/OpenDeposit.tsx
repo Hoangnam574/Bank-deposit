@@ -14,7 +14,7 @@ import type { ContractTransactionResponse } from "ethers";
 import PlanCard, { type PlanRow } from "@/components/PlanCard";
 import { usePlans } from "@/hooks/usePlans";
 import { useWallet } from "@/providers/WalletProvider";
-import { useSignerContracts } from "@/providers/ContractsProvider";
+import { useSignerContracts, useContractTime } from "@/providers/ContractsProvider";
 import { useTx } from "@/hooks/useTx";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
@@ -31,6 +31,7 @@ export default function OpenDeposit() {
   const { plans, loading, error } = usePlans();
   const { address } = useWallet();
   const signerC = useSignerContracts();
+  const { daySeconds, yearSeconds } = useContractTime();
   const { run, state } = useTx();
   const confirm = useConfirm();
   const { t } = useLang();
@@ -161,7 +162,7 @@ export default function OpenDeposit() {
           <strong className="num">{fmtToken(amount, 2)} USDC</strong> ·{" "}
           <span className="num">{t("detail.days", { d: Number(plan.tenorDays) })}</span> · {t("open.success3")}{" "}
           <span className="num text-primary">{formatBps(plan.aprBps)}</span> {t("open.success4")}{" "}
-          <span className="num">{fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * 86_400)}</span>.
+          <span className="num">{fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * daySeconds)}</span>.
         </>
       ),
       okLabel: t("open.successOk"),
@@ -257,7 +258,7 @@ export default function OpenDeposit() {
               <div className="flex justify-between items-baseline">
                 <dt className="text-subtle">{t("open.sumInterest")}</dt>
                 <dd className="num text-ok text-base">
-                  +{fmtToken(previewInterestOnAmount(gpAmount, plan.tenorDays, plan.aprBps), 4)}
+                  +{fmtToken(previewInterestOnAmount(gpAmount, plan.tenorDays, plan.aprBps, BigInt(daySeconds), BigInt(yearSeconds)), 4)}
                 </dd>
               </div>
               <div className="flex justify-between">
@@ -273,7 +274,7 @@ export default function OpenDeposit() {
               <div className="flex justify-between">
                 <dt className="text-subtle">{t("open.sumMaturity")}</dt>
                 <dd className="text-right">
-                  {amount !== null ? fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * 86_400) : "—"}
+                  {amount !== null ? fmtDate(Date.now() / 1000 + Number(plan.tenorDays) * daySeconds) : "—"}
                 </dd>
               </div>
               <div className="pt-3 border-t border-line text-xs text-subtle leading-relaxed">

@@ -2,6 +2,7 @@
  * NetworkGuard (T6.4) — chain không thuộc danh sách allowed → banner cảnh báo
  * ngay dưới nav với action switch. Chain *allowed nhưng chưa deploy* được
  * xử lý ở component NoDeploymentState (dùng trong các page).
+ * Bổ sung banner cảnh báo chế độ test khi DAY_SECONDS != 86400.
  */
 import { AlertTriangle } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
@@ -44,7 +45,10 @@ export function ChainPill({ chainId, compact, className = "" }: { chainId: numbe
 export function NetworkGuard() {
   const { chainId, hasWallet } = useWallet();
   const { t } = useLang();
-  if (!hasWallet || isAllowedChain(chainId)) return null;
+
+  if (!hasWallet || isAllowedChain(chainId)) {
+    return null;
+  }
 
   return (
     <div role="alert" className="bg-err/10 border-b border-err/40 px-4 py-2.5 text-sm flex flex-wrap items-center gap-3">

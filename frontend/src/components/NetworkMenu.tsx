@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
+import { useContracts, SEPOLIA_MODES } from "@/providers/ContractsProvider";
 import { ChainPill, ALLOWED_CHAINS, CHAIN_LABEL } from "@/components/NetworkGuard";
 import HardhatKeyImport from "@/components/HardhatKeyImport";
 import { useLang } from "@/lib/i18n";
@@ -44,6 +45,7 @@ export default function NetworkMenu({ compact }: { compact?: boolean }) {
 
 function NetworkModal({ onClose }: { onClose: () => void }) {
   const { chainId, switchNetwork } = useWallet();
+  const { sepoliaMode, setSepoliaMode } = useContracts();
   const { t } = useLang();
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -113,6 +115,39 @@ function NetworkModal({ onClose }: { onClose: () => void }) {
               </button>
             );
           })}
+          {/* Chuyển đổi chế độ hợp đồng Sepolia (day1 vs day86400) */}
+          {chainId === 11155111 && (
+            <div className="mt-3 pt-3 border-t border-line">
+              <span className="eyebrow !text-muted text-[11px] uppercase tracking-wider block mb-2">
+                Chế độ Sepolia (Hợp đồng)
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {(["day1", "day86400"] as const).map((m) => {
+                  const active = sepoliaMode === m;
+                  const info = SEPOLIA_MODES[m];
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setSepoliaMode(m)}
+                      className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                        active
+                          ? "border-primary bg-primary/10 text-txt ring-1 ring-primary/40"
+                          : "border-line bg-panel hover:border-line-dim text-muted"
+                      }`}
+                    >
+                      <div className="text-xs font-semibold flex items-center justify-between">
+                        <span>{info.label}</span>
+                        {active && <Check size={12} className="text-primary" />}
+                      </div>
+                      <div className="text-[10px] text-subtle mt-1 leading-tight">{info.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Key import ví local — hiện NGAY trong modal khi đang ở Hardhat
               Local (key Hardhat không tồn tại trên Sepolia): */}
           {chainId === 31337 && (

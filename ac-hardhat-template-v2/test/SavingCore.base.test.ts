@@ -916,14 +916,14 @@ describe("SavingCore — base flows", () => {
     it("80. reverts deploy with zero-address token", async () => {
       const Factory = await ethers.getContractFactory("SavingCore");
       await expect(
-        Factory.deploy(ethers.ZeroAddress, await f.vault.getAddress()),
+        Factory.deploy(ethers.ZeroAddress, await f.vault.getAddress(), 86400),
       ).to.be.revertedWithCustomError(Factory, "SC_InvalidPlan");
     });
 
     it("81. reverts deploy with zero-address vault", async () => {
       const Factory = await ethers.getContractFactory("SavingCore");
       await expect(
-        Factory.deploy(await f.usdc.getAddress(), ethers.ZeroAddress),
+        Factory.deploy(await f.usdc.getAddress(), ethers.ZeroAddress, 86400),
       ).to.be.revertedWithCustomError(Factory, "SC_InvalidPlan");
     });
 

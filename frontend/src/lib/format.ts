@@ -24,6 +24,19 @@ export function fmtToken(units: bigint, maxDp = 6): string {
   return fracStr ? `${intStr}.${fracStr}` : intStr;
 }
 
+/** Format số tiền hiển thị đúng số chữ số thập phân (không cắt bỏ số 0 ở cuối), mặc định 6 số lẻ */
+export function fmtTokenFixed(units: bigint, dp = 6): string {
+  if (units < 0n) return "-" + fmtTokenFixed(-units, dp);
+  const int = units / SCALAR;
+  const frac = units % SCALAR;
+  const fracStr = frac
+    .toString()
+    .padStart(DECIMALS, "0")
+    .slice(0, dp);
+  const intStr = int.toLocaleString("en-US");
+  return `${intStr}.${fracStr}`;
+}
+
 /** Lượng → bigint với tối đa 6 decimals — dùng khi user nhập */
 export function parseToken(input: string): bigint {
   if (!/^[0-9]+(\.[0-9]+)?$/.test(input)) throw new Error(rawT("err.amountInvalid"));
@@ -34,9 +47,15 @@ export function parseToken(input: string): bigint {
 }
 
 /** Lãi dự kiến — multiply-before-divide (D9 dust), nguyên bản từ doanh nghiệp */
-export function previewInterestOnAmount(principal: bigint, tenorDays: bigint, aprBps: bigint): bigint {
-  const seconds = tenorDays * 86_400n;
-  return (principal * seconds * aprBps) / (10_000n * SECONDS_PER_YEAR);
+export function previewInterestOnAmount(
+  principal: bigint,
+  tenorDays: bigint,
+  aprBps: bigint,
+  daySeconds: bigint = 86_400n,
+  yearSeconds: bigint = SECONDS_PER_YEAR,
+): bigint {
+  const seconds = tenorDays * daySeconds;
+  return (principal * seconds * aprBps) / (10_000n * yearSeconds);
 }
 
 /** Với deposit có sẵn — kiểu lãi đã tính chính xác muốn headers theo previewExit từ SC */
@@ -58,11 +77,12 @@ export function fmtDate(unixSeconds: number | bigint): string {
 }
 
 /** Đếm ngược dạng "3 ngày 7 giờ"; nếu passed thì "Hết hạn" (theo ngôn ngữ hiện tại) */
-export function fmtCountdown(targetSec: number | bigint, nowSec: number): string {
+export function fmtCountdown(targetSec: number | bigint, nowSec: number, daySeconds = 86_400): string {
   const delta = Number(targetSec) - nowSec;
   if (delta <= 0) return rawT("countdown.expired");
-  const d = Math.floor(delta / 86_400);
-  const h = Math.floor((delta % 86_400) / 3600);
+  if (delta < 60) return rawT("countdown.sec", { s: delta });
+  const d = Math.floor(delta / daySeconds);
+  const h = Math.floor((delta % daySeconds) / 3600);
   const m = Math.floor((delta % 3600) / 60);
   const s = delta % 60;
   if (d > 0) return rawT("countdown.dh", { d, h });

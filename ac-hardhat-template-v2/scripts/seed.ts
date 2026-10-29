@@ -50,11 +50,12 @@ const { ethers, networkName } = await network.create();
 const chainId = (await ethers.provider.getNetwork()).chainId;
 
 // 1) Đọc addresses từ Ignition deployment
+const deploymentId = process.env.DEPLOYMENT_ID || `chain-${chainId}`;
 const addressesFile = join(
   process.cwd(),
   "ignition",
   "deployments",
-  `chain-${chainId}`,
+  deploymentId,
   "deployed_addresses.json",
 );
 let deployed: Record<string, string>;

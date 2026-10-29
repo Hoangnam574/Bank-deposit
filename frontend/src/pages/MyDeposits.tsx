@@ -77,6 +77,31 @@ export default function MyDeposits() {
   const [filter, setFilter] = useState<"all" | "active" | "closed">("all");
   const [nowSec, setNowSec] = useState(0);
 
+  /* Poll block mới theo thời gian tạo khối (block.timestamp) — không nhảy ngược */
+  useEffect(() => {
+    if (!contracts || !hasDeployment) return;
+    let cancelled = false;
+    let lastSeen = 0;
+    const t = window.setInterval(() => {
+      void (async () => {
+        try {
+          const block = await getBrowser()?.getBlock("latest");
+          if (!block || cancelled) return;
+          const ts = Number(block.timestamp);
+          if (ts > 0 && ts !== lastSeen) {
+            lastSeen = ts;
+            if (!cancelled) setNowSec((prev) => Math.max(prev, ts));
+          }
+        } catch {
+        }
+      })();
+    }, 2000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [contracts, hasDeployment, getBrowser]);
+
   /* ── Load active NFT list + lịch sử event-log (refetch khi tx thành công) ── */
   useEffect(() => {
     if (!contracts || !hasDeployment || !address) {
@@ -109,7 +134,7 @@ export default function MyDeposits() {
         const block = await getBrowser()?.getBlock("latest");
         if (!cancelled && block) setNowSec(Number(block.timestamp));
 
-        /* ── 1. Sổ đang giữ NFT (Active + closed-chưa-burn nếu có) ── */
+        /* ── 1. Sổ đang giữ NFT (Active) ── */
         const bal = Number((await core.balanceOf(address)) as bigint);
         const list: DepositRow[] = [];
         for (let i = 0; i < bal; i++) {
@@ -129,9 +154,10 @@ export default function MyDeposits() {
         }
         if (!cancelled) setRows(list);
 
-        /* ── 2. Lịch sử từ event log ── */
+        /* ── 2. Lịch sử từ event log (dùng fromBlock trên Sepolia để không timeout RPC) ── */
         try {
-          const opened = (await core.queryFilter(core.filters.DepositOpened(null, address))) as EventLog[];
+          const fromBlock = chainId === 11155111 ? 12017000 : 0;
+          const opened = (await core.queryFilter(core.filters.DepositOpened(null, address), fromBlock)) as EventLog[];
           const openedMap = new Map<number, { planId: number; principal: bigint; apr: bigint }>();
           for (const l of opened) {
             const a = l.args as unknown[];
@@ -139,7 +165,7 @@ export default function MyDeposits() {
           }
 
           /* Phạt rút sớm đã nộp theo deposit (PenaltyCharged) = LỖ thực */
-          const penLogs = (await core.queryFilter(core.filters.PenaltyCharged(null, address))) as EventLog[];
+          const penLogs = (await core.queryFilter(core.filters.PenaltyCharged(null, address), fromBlock)) as EventLog[];
           const penaltyMap = new Map<number, bigint>();
           for (const l of penLogs) {
             const a = l.args as unknown[];
@@ -149,8 +175,8 @@ export default function MyDeposits() {
 
           const hist: HistoryRow[] = [];
 
-          /* Withdrawn — rút đủ hạn / sớm / MỘT PHẦN (deposit vẫn sống) */
-          const withdrawn = (await core.queryFilter(core.filters.Withdrawn(null, address))) as EventLog[];
+          /* Withdrawn — rút đúng hạn / sớm / MỘT PHẦN */
+          const withdrawn = (await core.queryFilter(core.filters.Withdrawn(null, address), fromBlock)) as EventLog[];
           for (const l of withdrawn) {
             const a = l.args as unknown[];
             const id = Number(a[0]);
@@ -163,7 +189,6 @@ export default function MyDeposits() {
               /* burn rồi → đóng hẳn */
             }
             const info = openedMap.get(id);
-            /* Fallback: thiếu event phạt mà nhận về < principal gốc (rút sớm full) → hiệu số là phạt */
             let penalty = penaltyMap.get(id) ?? 0n;
             if (penalty === 0n && info && !stillActive && isEarly) {
               const diff = info.principal - (a[2] as bigint);
@@ -184,9 +209,9 @@ export default function MyDeposits() {
             });
           }
 
-          /* Emergency (C5) */
+          /* Emergency */
           try {
-            const emergency = (await core.queryFilter(core.filters.EmergencyWithdrawn(null, address))) as EventLog[];
+            const emergency = (await core.queryFilter(core.filters.EmergencyWithdrawn(null, address), fromBlock)) as EventLog[];
             for (const l of emergency) {
               const a = l.args as unknown[];
               const id = Number(a[0]);
@@ -207,8 +232,8 @@ export default function MyDeposits() {
             /* ABI cũ không có event — bỏ qua */
           }
 
-          /* Renewed — không index owner → lọc qua tập DepositOpened của user */
-          const renewed = (await core.queryFilter(core.filters.Renewed())) as EventLog[];
+          /* Renewed — lọc qua tập DepositOpened của user */
+          const renewed = (await core.queryFilter(core.filters.Renewed(), fromBlock)) as EventLog[];
           for (const l of renewed) {
             const a = l.args as unknown[];
             const oldId = Number(a[0]);
@@ -231,7 +256,7 @@ export default function MyDeposits() {
           hist.sort((x, y) => y.blockNumber - x.blockNumber);
           if (!cancelled) setHistory(hist);
         } catch {
-          /* lịch sử lỗi (RPC giới hạn) — không phá danh sách active */
+          /* Lỗi RPC event — không phá danh sách active */
         }
       } catch {
         if (!cancelled) setError(t("dep.loadError"));
@@ -249,21 +274,48 @@ export default function MyDeposits() {
     };
   }, [contracts, hasDeployment, address, chainId, getBrowser]);
 
-  const filtered = rows.filter((r) =>
-    filter === "active"
-      ? Number(r.status) === STATUS_ACTIVE
-      : filter === "closed"
-        ? Number(r.status) !== STATUS_ACTIVE
-        : true,
-  );
-
-  /* scaleX cần phần 0..1 — chia 100 (cùng đơn vị với progress-fill ở DepositDetail) */
+  /* scaleX cần phần 0..1 — chia 100 */
   const pct = (d: DepositRow): string => {
     const p = ((nowSec - Number(d.startAt)) / Math.max(1, Number(d.maturityAt) - Number(d.startAt))) * 100;
     return (Math.max(0, Math.min(100, p)) / 100).toFixed(3);
   };
 
-  const hasActive = rows.some((r) => Number(r.status) === STATUS_ACTIVE);
+  const renderHistoryCard = (h: HistoryRow) => {
+    const meta = KIND_META[h.kind];
+    const tenor = h.planId !== undefined ? planRows.find((p) => p.id === h.planId) : undefined;
+    return (
+      <Link
+        key={h.key}
+        to={`/deposit/${h.id}`}
+        className="card card-int focus-visible:outline focus-visible:outline-2 focus-visible:outline-secondary"
+      >
+        <div className="flex items-center justify-between">
+          <div className="eyebrow">Deposit #{h.id}</div>
+          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${meta.cls}`}>
+            {t(meta.key)}
+          </span>
+        </div>
+        <div className="num mt-2 text-2xl font-display text-txt">{fmtToken(h.amount)} USDC</div>
+        <div className="text-xs text-subtle mt-2.5">
+          {h.stillActive
+            ? t("dep.partialNote")
+            : h.kind === "renewed" && h.newId
+              ? t("dep.renewedNote", { id: h.newId })
+              : h.ts
+                ? t("dep.closedAt", { date: fmtDate(h.ts) })
+                : t("dep.blockNote", { n: h.blockNumber })}
+        </div>
+        <div className="num mt-2 text-sm flex flex-wrap gap-x-4 gap-y-1 text-subtle">
+          {h.apr !== undefined && <span className="text-primary">{formatBps(h.apr)} APR</span>}
+          {tenor !== undefined && <span>{t("detail.days", { d: Number(tenor.tenorDays) })}</span>}
+          {h.interest > 0n && <span className="text-ok">+{fmtToken(h.interest, 4)} USDC</span>}
+          {h.penalty > 0n && <span className="text-err">−{fmtToken(h.penalty, 2)} USDC</span>}
+        </div>
+      </Link>
+    );
+  };
+
+  const hasAny = rows.length > 0 || history.length > 0;
 
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
@@ -279,8 +331,8 @@ export default function MyDeposits() {
 
       {!contracts && <NoDeploymentState page={t("dep.page")} />}
       {contracts && error && <div className="card border-err/40 text-err text-sm mb-4">{error}</div>}
-      {contracts && loading && rows.length === 0 && <SkeletonRows count={2} />}
-      {contracts && !loading && !error && rows.length === 0 && history.length === 0 && (
+      {contracts && loading && !hasAny && <SkeletonRows count={2} />}
+      {contracts && !loading && !error && !hasAny && (
         <div className="card text-center py-12 border-dashed !border-line">
           <Inbox className="mx-auto text-subtle" size={42} aria-hidden />
           <p className="mt-3 text-subtle">{t("dep.empty")}</p>
@@ -290,15 +342,15 @@ export default function MyDeposits() {
         </div>
       )}
 
-      {contracts && rows.length > 0 && (
+      {contracts && hasAny && (
         <>
-          {/* Bộ lọc — segmented buttons aria-pressed */}
+          {/* Bộ lọc — segmented buttons */}
           <div className="flex gap-2 mb-4 text-sm" aria-label={t("dep.filterAria")}>
             {(
               [
                 ["all", t("dep.filterAll")],
-                ["active", t("dep.filterActive")],
-                ["closed", t("dep.filterClosed")],
+                ["active", `${t("dep.filterActive")} (${rows.length})`],
+                ["closed", `${t("dep.filterClosed")} (${history.length})`],
               ] as const
             ).map(([v, label]) => (
               <button
@@ -317,93 +369,82 @@ export default function MyDeposits() {
             ))}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {filtered.map((d) => (
-              <Link
-                key={d.id}
-                to={`/deposit/${d.id}`}
-                className="card card-int focus-visible:outline focus-visible:outline-2 focus-visible:outline-secondary"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="eyebrow">Deposit #{d.id}</div>
-                  <StatusBadge status={d.status} />
+          {/* TAB: ĐANG CHẠY (hoặc TẤT CẢ) */}
+          {(filter === "all" || filter === "active") && (
+            <>
+              {rows.length === 0 && filter === "active" ? (
+                <div className="card text-center py-10 border-dashed !border-line">
+                  <Inbox className="mx-auto text-subtle" size={36} aria-hidden />
+                  <p className="mt-2 text-sm text-subtle">{t("dep.emptyActive")}</p>
+                  <Link to="/open" className="btn btn-cta mt-3 inline-block cursor-pointer">
+                    {t("dep.emptyCta")}
+                  </Link>
                 </div>
-                <div className="num mt-2 text-2xl font-display text-txt">{fmtToken(d.principal)} USDC</div>
-                {/* Progress % thời gian đã gửi — scaleX GPU-safe (không animate width) */}
-                {Number(d.status) === STATUS_ACTIVE && Number(d.maturityAt) > 0 && (
-                  <div className="mt-3 progress-track !h-1.5" aria-hidden>
-                    <div
-                      className="progress-fill"
-                      style={{ "--p": pct(d) } as CSSProperties}
-                    />
-                  </div>
-                )}
-                <div className="text-xs mt-2.5">
-                  <Countdown targetSec={d.maturityAt} nowSec={nowSec} showExact />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {rows.map((d) => (
+                    <Link
+                      key={d.id}
+                      to={`/deposit/${d.id}`}
+                      className="card card-int focus-visible:outline focus-visible:outline-2 focus-visible:outline-secondary"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="eyebrow">Deposit #{d.id}</div>
+                        <StatusBadge status={d.status} />
+                      </div>
+                      <div className="num mt-2 text-2xl font-display text-txt">{fmtToken(d.principal)} USDC</div>
+                      {Number(d.status) === STATUS_ACTIVE && Number(d.maturityAt) > 0 && (
+                        <div className="mt-3 progress-track !h-1.5" aria-hidden>
+                          <div
+                            className="progress-fill"
+                            style={{ "--p": pct(d) } as CSSProperties}
+                          />
+                        </div>
+                      )}
+                      <div className="text-xs mt-2.5">
+                        <Countdown targetSec={d.maturityAt} nowSec={nowSec} showExact />
+                      </div>
+                      <div className="num mt-2 text-sm flex gap-4 text-subtle">
+                        <span className="text-primary">{formatBps(d.aprBpsAtOpen)} APR</span>
+                        <span>{t("detail.days", { d: Number(d.tenorDays) })}</span>
+                        <span className="text-warn">{t("plan.penalty")} {formatBps(d.penaltyBpsAtOpen)}</span>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
-                <div className="num mt-2 text-sm flex gap-4 text-subtle">
-                  <span className="text-primary">{formatBps(d.aprBpsAtOpen)} APR</span>
-                  <span>{t("detail.days", { d: Number(d.tenorDays) })}</span>
-                  <span className="text-warn">{t("plan.penalty")} {formatBps(d.penaltyBpsAtOpen)}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* ── Lịch sử các sổ đã tất toán (từ event log — NFT đã burn) ── */}
-      {contracts && history.length > 0 && (
-        <section className="mt-10" aria-label={t("dep.historyAria")}>
-          <div className="flex items-center gap-2">
-            <History size={15} className="text-subtle" aria-hidden />
-            <span className="eyebrow">{t("dep.historyEyebrow")}</span>
-          </div>
-
-          {/* Hết active mà còn lịch sử → nhắc nhẹ thay vì trang trống rỗng */}
-          {!hasActive && !loading && (
-            <p className="text-sm text-subtle mt-3">{t("dep.noActive")}</p>
+              )}
+            </>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 mt-3">
-            {history.map((h) => {
-              const meta = KIND_META[h.kind];
-              const tenor =
-                h.planId !== undefined ? planRows.find((p) => p.id === h.planId) : undefined;
-              return (
-                /* Bấm vào thẻ → trang chi tiết sổ (đóng = chế độ chỉ xem) */
-                <Link
-                  key={h.key}
-                  to={`/deposit/${h.id}`}
-                  className="card card-int focus-visible:outline focus-visible:outline-2 focus-visible:outline-secondary"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="eyebrow">Deposit #{h.id}</div>
-                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${meta.cls}`}>
-                      {t(meta.key)}
-                    </span>
-                  </div>
-                  <div className="num mt-2 text-2xl font-display text-txt">{fmtToken(h.amount)} USDC</div>
-                  <div className="text-xs text-subtle mt-2.5">
-                    {h.stillActive
-                      ? t("dep.partialNote")
-                      : h.kind === "renewed" && h.newId
-                        ? t("dep.renewedNote", { id: h.newId })
-                        : h.ts
-                          ? t("dep.closedAt", { date: fmtDate(h.ts) })
-                          : t("dep.blockNote", { n: h.blockNumber })}
-                  </div>
-                  <div className="num mt-2 text-sm flex flex-wrap gap-x-4 gap-y-1 text-subtle">
-                    {h.apr !== undefined && <span className="text-primary">{formatBps(h.apr)} APR</span>}
-                    {tenor !== undefined && <span>{t("detail.days", { d: Number(tenor.tenorDays) })}</span>}
-                    {h.interest > 0n && <span className="text-ok">+{fmtToken(h.interest, 4)} USDC</span>}
-                    {h.penalty > 0n && <span className="text-err">−{fmtToken(h.penalty, 2)} USDC</span>}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+          {/* TAB: ĐÃ ĐÓNG */}
+          {filter === "closed" && (
+            <>
+              {history.length === 0 ? (
+                <div className="card text-center py-10 border-dashed !border-line">
+                  <Inbox className="mx-auto text-subtle" size={36} aria-hidden />
+                  <p className="mt-2 text-sm text-subtle">{t("dep.emptyClosed")}</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {history.map(renderHistoryCard)}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* LỊCH SỬ KHI Ở TAB "TẤT CẢ" */}
+          {filter === "all" && history.length > 0 && (
+            <section className="mt-10" aria-label={t("dep.historyAria")}>
+              <div className="flex items-center gap-2">
+                <History size={15} className="text-subtle" aria-hidden />
+                <span className="eyebrow">{t("dep.historyEyebrow")}</span>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 mt-3">
+                {history.map(renderHistoryCard)}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </main>
   );

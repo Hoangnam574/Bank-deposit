@@ -8,7 +8,7 @@
  *   - có pending lãi NỢ (C1 defer) → Claim Pending
  * Mọi action có confirm (ConfirmDialog in-app) + map lỗi thân thiện.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Loader2, SearchX, CheckCircle2 } from "lucide-react";
 import type { ContractTransactionResponse, EventLog } from "ethers";
@@ -18,18 +18,16 @@ import MaturityRing from "@/components/MaturityRing";
 import InterestTicker from "@/components/InterestTicker";
 import NoDeploymentState from "@/components/NoDeploymentState";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
+import { useContracts, useSignerContracts, useContractTime } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";
 import { useTx } from "@/hooks/useTx";
 import { usePlans } from "@/hooks/usePlans";
 import RenewPlanSelect from "@/components/RenewPlanSelect";
-import { fmtToken, formatBps, fmtDate } from "@/lib/format";
+import { fmtToken, fmtTokenFixed, formatBps, fmtDate } from "@/lib/format";
 import { useLang, rawT } from "@/lib/i18n";
 
 const SCALAR = 1_000_000n;
 const ACTIVE = 0;
-const GRACE_SECONDS = 3 * 86_400; // variant AT190234: grace 3 ngày
-const EMERGENCY_DELAY_SECONDS = 7 * 86_400; // C5 sau 7 ngày pause
 
 interface Detail {
   planId: bigint;
@@ -73,6 +71,7 @@ export default function DepositDetail() {
   const navigate = useNavigate();
   const { contracts, hasDeployment } = useContracts();
   const signerC = useSignerContracts();
+  const { daySeconds, gracePeriod, emergencyDelay } = useContractTime();
   const { address, getBrowser, chainId } = useWallet();
   const { state, run } = useTx();
   const confirm = useConfirm();
@@ -93,12 +92,7 @@ export default function DepositDetail() {
   const [inputAmount, setInputAmount] = useState("");
   const [renewPlan, setRenewPlan] = useState<number | null>(null);
 
-  /* Nút gạt "Tự động renew" — preference lưu localStorage (contract không có chỗ
-     lưu ý định, không đụng contracts/tests). Key theo chain + ví + depositId
-     để không nhầm lẫn giữa mạng/tài khoản/sổ khác nhau. */
-  const [arOn, setArOn] = useState(false);
-  const [arPlan, setArPlan] = useState<number | null>(null);
-  const arFiredRef = useRef(false);
+
 
   const amount = useMemo(() => {
     try {
@@ -198,50 +192,12 @@ export default function DepositDetail() {
   }, [signerC, address, amount, state.status]);
 
   const matured = d !== null && nowSec >= Number(d.maturityAt);
-  const overGrace = d !== null && nowSec >= Number(d.maturityAt) + GRACE_SECONDS;
+  const overGrace = d !== null && nowSec >= Number(d.maturityAt) + gracePeriod;
   const isOwner = owner !== null && address !== null && owner.toLowerCase() === address.toLowerCase();
-  const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
+  const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + emergencyDelay;
   const closed = d !== null && Number(d.status) !== ACTIVE;
 
-  /* ── Nút gạt Tự động renew — nạp/lưu preference theo chain + ví + id ── */
-  const arKey =
-    address && depositId !== null ? `ar:${chainId ?? 0}:${address.toLowerCase()}:${depositId}` : null;
-  useEffect(() => {
-    if (!arKey) return;
-    try {
-      const raw = localStorage.getItem(arKey);
-      if (raw) {
-        const j = JSON.parse(raw) as { on?: boolean; planId?: number };
-        setArOn(Boolean(j.on));
-        setArPlan(j.planId ?? null);
-      } else {
-        setArOn(false);
-        setArPlan(null);
-      }
-    } catch {
-      /* JSON hỏng — coi như chưa bật */
-    }
-    arFiredRef.current = false; // đổi sổ → nạp lại cờ tự động
-  }, [arKey]);
 
-  const setAr = (on: boolean, planId: number | null): void => {
-    setArOn(on);
-    setArPlan(planId);
-    if (on && arKey && planId !== null) localStorage.setItem(arKey, JSON.stringify({ on: true, planId }));
-    else if (arKey) localStorage.removeItem(arKey);
-  };
-
-  /* Auto-fire: gạt BẬT + đã quá grace + vẫn Active + là owner + không pause
-     → tự gọi renewDeposit 1 lần (ref chặn gọi lặp khi effect chạy lại theo
-     poll/state; tx lỗi thì dừng — user sửa thiết lập rồi thử lại). */
-  useEffect(() => {
-    if (arFiredRef.current || !arOn || arPlan === null || !isOwner || paused || closed || !overGrace || pending) {
-      return;
-    }
-    arFiredRef.current = true;
-    void autoRenewNow(arPlan);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arOn, arPlan, isOwner, paused, closed, overGrace, pending]);
 
   /* ── Sổ đóng → dựng "Kết quả tất toán" từ event log: thời điểm rút, số nhận,
         lãi, phạt rút sớm (PenaltyCharged), renew → sổ mới ── */
@@ -254,10 +210,11 @@ export default function DepositDetail() {
     const core = contracts.core;
     void (async () => {
       try {
-        const withdrawn = (await core.queryFilter(core.filters.Withdrawn(depositId, null))) as EventLog[];
-        const emergency = (await core.queryFilter(core.filters.EmergencyWithdrawn(depositId, null))) as EventLog[];
-        const renewed = (await core.queryFilter(core.filters.Renewed(depositId, null))) as EventLog[];
-        const penalties = (await core.queryFilter(core.filters.PenaltyCharged(depositId, null))) as EventLog[];
+        const fromBlock = chainId === 11155111 ? 12017000 : 0;
+        const withdrawn = (await core.queryFilter(core.filters.Withdrawn(depositId, null), fromBlock)) as EventLog[];
+        const emergency = (await core.queryFilter(core.filters.EmergencyWithdrawn(depositId, null), fromBlock)) as EventLog[];
+        const renewed = (await core.queryFilter(core.filters.Renewed(depositId, null), fromBlock)) as EventLog[];
+        const penalties = (await core.queryFilter(core.filters.PenaltyCharged(depositId, null), fromBlock)) as EventLog[];
 
         let received = 0n;
         let interest = 0n;
@@ -297,13 +254,14 @@ export default function DepositDetail() {
     return () => {
       cancelled = true;
     };
-  }, [contracts, hasDeployment, depositId, closed, getBrowser]);
+  }, [contracts, hasDeployment, depositId, closed, chainId, getBrowser]);
 
   /* ── Poll block mới: khi deposit Active chưa matured, block được ghi mới →
         refetch pv + cập nhật nowSec — lãi hiển thị chỉ thay đổi theo block ── */
-  const interestLive = d !== null && Number(d.status) === ACTIVE && !matured;
+  /* ── Poll block mới: chạy theo thời gian tạo khối (block.timestamp) ── */
+  const isDepositActive = d !== null && Number(d.status) === ACTIVE;
   useEffect(() => {
-    if (!contracts || !hasDeployment || !interestLive || depositId === null) return;
+    if (!contracts || !hasDeployment || !isDepositActive || depositId === null) return;
     let cancelled = false;
     let lastSeen = 0;
     const t = window.setInterval(() => {
@@ -312,22 +270,24 @@ export default function DepositDetail() {
           const block = await getBrowser()?.getBlock("latest");
           if (!block || cancelled) return;
           const ts = Number(block.timestamp);
-          if (lastSeen !== 0 && ts !== lastSeen) {
-            if (!cancelled) setNowSec(ts);
-            const px = (await contracts.core.previewExit(depositId)) as unknown[];
-            if (!cancelled) setPv((p) => (p ? { ...p, interest: px[1] as bigint } : p));
+          if (ts > 0 && ts !== lastSeen) {
+            lastSeen = ts;
+            if (!cancelled) setNowSec((prev) => Math.max(prev, ts));
+            if (!matured) {
+              const px = (await contracts.core.previewExit(depositId)) as unknown[];
+              if (!cancelled) setPv((p) => (p ? { ...p, interest: px[1] as bigint } : p));
+            }
           }
-          lastSeen = ts;
         } catch {
           /* lỗi poll lẻ — tick sau thử lại */
         }
       })();
-    }, 4000);
+    }, 2000);
     return () => {
       cancelled = true;
       window.clearInterval(t);
     };
-  }, [contracts, hasDeployment, depositId, interestLive, getBrowser]);
+  }, [contracts, hasDeployment, depositId, isDepositActive, matured, getBrowser]);
 
   const contractCall = (
     label: string,
@@ -347,29 +307,7 @@ export default function DepositDetail() {
     });
   };
 
-  /* Tự động renew theo nút gạt: khi đến lượt (đã quá grace) tự gọi
-     renewDeposit(depositId, planId) — hàm public của contract (chỉ yêu cầu
-     now >= maturityAt, cho phép chọn plan). Parse event Renewed → chuyển sang
-     trang deposit mới (NFT cũ đã burn). */
-  const autoRenewNow = async (planId: number): Promise<void> => {
-    if (!signerC || depositId === null) return;
-    const iface = signerC.core.interface;
-    let newId: number | null = null;
-    const hash = await run(t("detail.txRenew"), async () => {
-      const tx = (await signerC.core.renewDeposit(depositId, planId)) as unknown as ContractTransactionResponse;
-      const receipt = await tx.wait();
-      for (const log of receipt?.logs ?? []) {
-        try {
-          const desc = iface.parseLog({ topics: log.topics as string[], data: log.data });
-          if (desc?.name === "Renewed") newId = Number((desc.args as unknown[])[1]);
-        } catch {
-          /* log của contract khác — bỏ qua */
-        }
-      }
-      return tx;
-    });
-    if (hash && newId !== null && newId > 0) navigate(`/deposit/${newId}`);
-  };
+
 
   if (notFound) {
     if (withdrawnOk) {
@@ -481,10 +419,22 @@ export default function DepositDetail() {
       )}
 
       {/* ── Thông tin số liệu ─── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
-        <InfoBox label={t("detail.boxPrincipal")} value={<>{fmtToken(d.principal)} <span className="text-subtle">USDC</span></>} />
-        <InfoBox label={t("detail.boxApr")} value={<span className="num text-primary">{formatBps(d.aprBpsAtOpen)}</span>} />
-        <InfoBox label={t("detail.boxTenor")} value={<span className="num">{t("detail.days", { d: Number(d.tenorDays) })}</span>} />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6 items-stretch">
+        <InfoBox
+          label={t("detail.boxPrincipal")}
+          value={<>{fmtToken(d.principal)} <span className="text-subtle text-sm">USDC</span></>}
+          sub={<span className="text-[11px] text-subtle">USDC (6 số lẻ)</span>}
+        />
+        <InfoBox
+          label={t("detail.boxApr")}
+          value={<span className="num text-primary">{formatBps(d.aprBpsAtOpen)}</span>}
+          sub={<span className="text-[11px] text-subtle">{t("detail.subLocked")}</span>}
+        />
+        <InfoBox
+          label={t("detail.boxTenor")}
+          value={<span className="num">{t("detail.days", { d: Number(d.tenorDays) })}</span>}
+          sub={<span className="text-[11px] text-subtle">{daySeconds === 1 ? "1 ngày = 1 giây" : "Kỳ hạn cố định"}</span>}
+        />
         <InfoBox
           label={t("detail.boxMaturity")}
           value={
@@ -497,7 +447,7 @@ export default function DepositDetail() {
                     center={matured ? "100%" : `${Math.floor(tenurePct)}%`}
                   />
                 )}
-                <span className="text-sm">
+                <span className="text-sm font-semibold">
                   <Countdown targetSec={d.maturityAt} nowSec={nowSec} />
                 </span>
               </span>
@@ -505,6 +455,7 @@ export default function DepositDetail() {
               <span className="num">{fmtDate(d.maturityAt)}</span>
             )
           }
+          sub={<span className="num text-[11px] text-subtle">{fmtDate(d.maturityAt)}</span>}
         />
         <InfoBox
           label={matured ? t("detail.boxInterestMatured") : t("detail.boxInterestEst")}
@@ -517,135 +468,21 @@ export default function DepositDetail() {
                 ticking={!closed}
               />
             ) : (
-              <span className="num text-ok">{fmtToken(pv.interest, 4)} USDC</span>
+              <span className="num text-ok">{fmtTokenFixed(pv.interest, 6)} USDC</span>
             )
           }
+          sub={<span className="text-[11px] text-subtle font-normal">{matured ? "Lãi tính theo giây (6 số lẻ)" : "Lãi dự kiến khi đáo hạn"}</span>}
         />
         <InfoBox
           label={t("detail.boxPenalty")}
-          value={
-            <span className="text-warn">
-              <span className="num">−{formatBps(d.penaltyBpsAtOpen)}</span>
-              <span className="block text-[11px] text-subtle font-normal mt-0.5">
-                {t("detail.penaltyApprox", { amount: fmtToken(pv.penalty, 2) })}
-              </span>
-            </span>
-          }
+          value={<span className="text-warn num">−{formatBps(d.penaltyBpsAtOpen)}</span>}
+          sub={<span className="text-[11px] text-subtle font-normal">{t("detail.penaltyApprox", { amount: fmtToken(pv.penalty, 2) })}</span>}
         />
       </div>
 
-      {/* ── Nút gạt Tự động renew — luôn hiện khi Active + owner, đặt TRÊN card
-          progress kỳ hạn (user yêu cầu); set ý định sớm, đến lượt là tự chạy ── */}
-      {isOwner && !closed && (
-        <div className="card mt-3 !py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="font-display tracking-wider">{t("detail.arHeading")}</h2>
-              <p className="text-xs text-subtle mt-1">
-                {t("ar.a")} <span className="num">3</span> {t("ar.b")}{" "}
-                <strong className="text-txt">{t("ar.c")}</strong> {t("ar.d")}
-                {!overGrace && d !== null && (
-                  <> {t("ar.scheduled")} <span className="num text-primary">{fmtDate(Number(d.maturityAt) + GRACE_SECONDS)}</span>.</>
-                )}
-              </p>
-
-              {arOn && (
-                <div className="mt-3">
-                  <span className="eyebrow">{t("ar.planEyebrow")}</span>
-                  <div className="mt-1.5 max-w-md">
-                    <RenewPlanSelect
-                      plans={plans}
-                      currentPlanId={Number(d?.planId ?? 0)}
-                      value={arPlan}
-                      onChange={(planId) => setAr(true, planId)}
-                      disabled={pending}
-                      plansLoading={plansLoading}
-                    />
-                  </div>
-                  <p className="text-[11px] text-subtle mt-1.5">
-                    {t("ar.planHint")}
-                  </p>
-                </div>
-              )}
-
-              {arOn && overGrace && (
-                <p className="text-xs text-ok mt-2" role="status">
-                  {t("ar.ready")}
-                </p>
-              )}
-            </div>
-
-            {/* Switch — nút gạt có cửa sổ xác nhận khi BẬT và khi TẮT */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={arOn}
-              aria-label={t("ar.switchAria")}
-              disabled={pending}
-              className="shrink-0 cursor-pointer disabled:opacity-50"
-              onClick={async () => {
-                if (!arOn) {
-                  const ok = await confirm({
-                    title: t("ar.onTitle"),
-                    message: (
-                      <>
-                        {t("ar.on1", { id: depositId })} <span className="num">3</span> {t("ar.on2")}{" "}
-                        <strong className="text-ok">{t("ar.on3")}</strong> {t("ar.on4")}
-                        <br />
-                        <span className="text-xs text-subtle">{t("ar.onNote")}</span>
-                      </>
-                    ),
-                    okLabel: t("ar.onOk"),
-                  });
-                  if (ok) setAr(true, arPlan ?? renewPlan);
-                } else {
-                  const ok = await confirm({
-                    title: t("ar.offTitle"),
-                    message: (
-                      <>
-                        {t("ar.off1")} <strong>{t("ar.offStrong")}</strong>.
-                      </>
-                    ),
-                    tone: "danger",
-                    okLabel: t("ar.offOk"),
-                  });
-                  if (ok) setAr(false, null);
-                }
-              }}
-            >
-              <span
-                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
-                  arOn ? "bg-ok" : "bg-subtle/40"
-                }`}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
-                    arOn ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Progress kỳ hạn (startAt → maturityAt) — scaleX GPU-safe */}
-      {Number(d.status) === ACTIVE && Number(d.maturityAt) > 0 && (
-        <div className="card mt-3 !py-3" aria-hidden>
-          <div className="flex justify-between text-xs text-subtle mb-1.5">
-            <span>{fmtDate(d.startAt)}</span>
-            <span>{fmtDate(d.maturityAt)}</span>
-          </div>
-          <div className="progress-track">
-            <div className="progress-fill" style={{ "--p": (tenurePct / 100).toFixed(3) } as CSSProperties} />
-          </div>
-        </div>
-      )}
-
       {overGrace && Number(d.status) === ACTIVE && (
         <div className="card mt-4 border-primary/60 bg-primary/10 text-sm">
-          <strong>{t("og.a")}</strong> {t("og.b")} <strong>{t("og.c")}</strong> {formatBps(d.aprBpsAtOpen)}
-          {t("og.d")} {Number(d.tenorDays)} {t("og.e")}
+          <strong>{t("og.a")}</strong> ({daySeconds === 86400 ? "đáo hạn + 3 ngày" : `đáo hạn + ${gracePeriod} giây`}) — hệ thống có thể tự gọi autoRenewDeposit: gốc + lãi ghép chuyển sang kỳ hạn mới, APR <strong>{t("og.c")}</strong> {formatBps(d.aprBpsAtOpen)} {t("og.d")} {Number(d.tenorDays)} {t("og.e")} Bạn cũng có thể bấm nút <strong>Tái ký</strong> bên dưới để tái ký thủ công bất kỳ lúc nào.
         </div>
       )}
 
@@ -730,7 +567,9 @@ export default function DepositDetail() {
       {paused && !closed && !emergencyUnlocked && pauseAt !== null && (
         <div className="text-xs text-warn mt-3">
           {t("detail.pauseNote")}{" "}
-          {Math.max(0, Math.ceil((pauseAt + EMERGENCY_DELAY_SECONDS - nowSec) / 3600))} {t("detail.pauseHours")}
+          {pauseAt + emergencyDelay - nowSec < 3600
+            ? `${Math.max(0, pauseAt + emergencyDelay - nowSec)}s`
+            : `${Math.max(0, Math.ceil((pauseAt + emergencyDelay - nowSec) / 3600))} ${t("detail.pauseHours")}`}
         </div>
       )}
 
@@ -793,7 +632,7 @@ export default function DepositDetail() {
                       <>
                         {t("detail.earlyMsg", {
                           principal: fmtToken(pv.principal, 2),
-                          days: Number(d.maturityAt) > nowSec ? Math.ceil((Number(d.maturityAt) - nowSec) / 86400) : 0,
+                          days: Number(d.maturityAt) > nowSec ? Math.ceil((Number(d.maturityAt) - nowSec) / daySeconds) : 0,
                           interest: fmtToken(pv.interest, 4),
                           penalty: formatBps(d.penaltyBpsAtOpen),
                           approx: fmtToken(pv.penalty, 2),
@@ -827,13 +666,19 @@ export default function DepositDetail() {
                       : ""
                 }
                 onClick={async () => {
+                  const targetAmount = amount!;
                   const ok = await confirm({
                     title: t("detail.partialTitle"),
-                    message: t("detail.partialMsg", { amount: fmtToken(amount!), id: depositId }),
+                    message: t("detail.partialMsg", { amount: fmtToken(targetAmount), id: depositId }),
                     okLabel: t("detail.partialOk"),
                   });
                   if (ok) {
-                    contractCall(t("detail.txPartial"), async () => (await signerC!.core.partialEarlyWithdraw(depositId!, amount!)) as unknown as ContractTransactionResponse);
+                    void run(t("detail.txPartial"), async () => {
+                      const tx = (await signerC!.core.partialEarlyWithdraw(depositId!, targetAmount)) as unknown as ContractTransactionResponse;
+                      await tx.wait();
+                      setInputAmount("");
+                      return tx;
+                    });
                   }
                 }}
               >
@@ -841,48 +686,81 @@ export default function DepositDetail() {
               </button>
             )}
 
-            {!paused &&
-              (approved ? (
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  disabled={pending || amount === null || amount === 0n}
-                  onClick={async () => {
-                    const ok = await confirm({
-                      title: t("detail.topupTitle"),
-                      message: t("detail.topupMsg", { amount: fmtToken(amount!), id: depositId }),
-                      okLabel: t("detail.topupOk"),
-                    });
-                    if (ok) {
-                      contractCall(t("detail.txTopup"), async () => (await signerC!.core.topUpDeposit(depositId!, amount!)) as unknown as ContractTransactionResponse);
-                    }
-                  }}
-                >
-                  {t("detail.btnTopup", { amount: amount !== null ? fmtToken(amount, 2) : "" })}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  disabled={pending || amount === null || amount === 0n}
-                  title={t("detail.approveTopupTitle")}
-                  onClick={() => {
-                    if (!signerC) return;
-                    contractCall(t("detail.txApprove"), async () =>
-                      (await signerC.usdc.approve(signerC.savingCoreAddress, amount!)) as unknown as ContractTransactionResponse,
-                    );
-                  }}
-                >
-                  {t("detail.btnApprove", { amount: amount !== null ? fmtToken(amount, 2) : "" })}
-                </button>
-              ))}
-
-            {!paused && !overGrace && (
+            {!paused && (
               <button
                 type="button"
                 className="btn btn-outline"
-                disabled={pending || renewPlan === null}
-                title={t("detail.renewHint")}
+                disabled={pending || amount === null || amount === 0n || matured}
+                title={
+                  matured
+                    ? t("detail.maturedNoTopup")
+                    : amount === null || amount === 0n
+                      ? t("detail.needAmount")
+                      : ""
+                }
+                onClick={async () => {
+                  if (!signerC || amount === null || amount === 0n) return;
+                  if (matured) {
+                    await confirm({
+                      title: t("common.notice"),
+                      message: t("detail.maturedNoTopup"),
+                      okLabel: t("common.ok"),
+                    });
+                    return;
+                  }
+                  const topupAmount = amount;
+                  if (!approved) {
+                    const okApprove = await confirm({
+                      title: t("detail.topupApproveTitle"),
+                      message: t("detail.topupApproveMsg", { amount: fmtToken(topupAmount), id: depositId }),
+                      okLabel: t("detail.topupApproveOk"),
+                    });
+                    if (okApprove) {
+                      void run(t("detail.txTopup"), async () => {
+                        // Bước 1: Cấp quyền (Approve)
+                        const appTx = (await signerC.usdc.approve(signerC.savingCoreAddress, topupAmount)) as unknown as ContractTransactionResponse;
+                        await appTx.wait();
+                        setApproved(true);
+                        // Bước 2: Tự động nạp thêm ngay lập tức
+                        const topTx = (await signerC.core.topUpDeposit(depositId!, topupAmount)) as unknown as ContractTransactionResponse;
+                        await topTx.wait();
+                        setInputAmount(""); // Trả thẻ về trạng thái sạch ban đầu
+                        return topTx;
+                      });
+                    }
+                    return;
+                  }
+                  const ok = await confirm({
+                    title: t("detail.topupTitle"),
+                    message: t("detail.topupMsg", { amount: fmtToken(topupAmount), id: depositId }),
+                    okLabel: t("detail.topupOk"),
+                  });
+                  if (ok) {
+                    void run(t("detail.txTopup"), async () => {
+                      const topTx = (await signerC!.core.topUpDeposit(depositId!, topupAmount)) as unknown as ContractTransactionResponse;
+                      await topTx.wait();
+                      setInputAmount(""); // Trả thẻ về trạng thái sạch ban đầu
+                      return topTx;
+                    });
+                  }
+                }}
+              >
+                {t("detail.btnTopup", { amount: amount !== null && amount > 0n ? fmtToken(amount, 2) : "" })}
+              </button>
+            )}
+
+            {!paused && (
+              <button
+                type="button"
+                className={`btn ${matured ? "btn-cta" : "btn-outline"}`}
+                disabled={pending || !matured || renewPlan === null}
+                title={
+                  !matured
+                    ? t("detail.notMaturedRenew")
+                    : renewPlan === null
+                      ? t("detail.renewHint")
+                      : ""
+                }
                 onClick={async () => {
                   if (renewPlan === null) return;
                   const target = plans.find((p) => p.id === renewPlan) ?? null;
@@ -964,7 +842,7 @@ export default function DepositDetail() {
         <summary className="cursor-pointer">{t("detail.debugSummary")}</summary>
         <ul className="mt-2 space-y-1 font-mono">
           <li>planId: {Number(d.planId)} · penaltyBps snapshot: {Number(d.penaltyBpsAtOpen)} bps</li>
-          <li>startAt → maturityAt: {fmtDate(Number(pv.maturityAt) - Number(d.tenorDays) * 86400)} → {fmtDate(Number(pv.maturityAt))}</li>
+          <li>startAt → maturityAt: {fmtDate(d.startAt)} → {fmtDate(pv.maturityAt)}</li>
           <li>Status: {Number(d.status)} · isOwner: {String(isOwner)}</li>
         </ul>
       </details>
@@ -972,11 +850,16 @@ export default function DepositDetail() {
   );
 }
 
-function InfoBox({ label, value }: { label: string; value: ReactNode }) {
+function InfoBox({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
   return (
-    <div className="card !rounded-xl !p-3">
+    <div className="card !rounded-xl !p-3.5 h-full min-h-[96px] flex flex-col justify-between">
       <div className="text-xs text-subtle">{label}</div>
-      <div className="num text-lg mt-1">{value}</div>
+      <div className="num text-lg my-1.5 flex items-center min-h-[36px]">{value}</div>
+      {sub ? (
+        <div className="text-[11px] text-subtle font-normal">{sub}</div>
+      ) : (
+        <div className="text-[11px] text-transparent select-none" aria-hidden>—</div>
+      )}
     </div>
   );
 }

@@ -10,6 +10,8 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { network } from "hardhat";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 // `hardhat run` không nhận CLI flag ngoài → cấu hình qua env var.
 const days = process.env.TT_DAYS ? Number(process.env.TT_DAYS) : undefined;
@@ -28,11 +30,29 @@ if (networkName !== "localhost" && networkName !== "hardhatNetwork" && networkNa
   process.exit(1);
 }
 
+// Đọc DAY_SECONDS từ contract nếu có, fallback 86400
+let daySec = 86400;
+try {
+  const chainId = (await ethers.provider.getNetwork()).chainId;
+  const addressesFile = join(
+    process.cwd(),
+    "ignition",
+    "deployments",
+    `chain-${chainId}`,
+    "deployed_addresses.json",
+  );
+  const deployed = JSON.parse(await readFile(addressesFile, "utf8"));
+  const core = await ethers.getContractAt("SavingCore", deployed["BankDepositModule#SavingCore"]);
+  daySec = Number(await core.DAY_SECONDS());
+} catch {
+  // fallback nếu chưa có contract deploy
+}
+
 const before = Number((await ethers.provider.getBlock("latest"))?.timestamp ?? 0);
 
 // evm_increaseTime nhận số giây tăng thêm (bigint-safe vì < 2^53).
 const deltaSec =
-  days !== undefined ? days * 24 * 3600 : seconds !== undefined ? seconds : undefined;
+  days !== undefined ? days * daySec : seconds !== undefined ? seconds : undefined;
 
 if (deltaSec !== undefined) {
   if (deltaSec <= 0) {
@@ -41,7 +61,7 @@ if (deltaSec !== undefined) {
   }
   await provider.request({ method: "evm_increaseTime", params: [deltaSec] });
   await provider.request({ method: "evm_mine", params: [] });
-  console.log(`⏩ Băng thời gian +${deltaSec}s (${days !== undefined ? `${days} ngày` : `${seconds}s`})`);
+  console.log(`⏩ Băng thời gian +${deltaSec}s (${days !== undefined ? `${days} ngày (mỗi ngày ${daySec}s)` : `${seconds}s`})`);
 } else if (to !== undefined) {
   await provider.request({ method: "evm_setNextBlockTimestamp", params: [to] });
   await provider.request({ method: "evm_mine", params: [] });
@@ -50,4 +70,4 @@ if (deltaSec !== undefined) {
 
 const after = Number((await ethers.provider.getBlock("latest"))?.timestamp ?? 0);
 console.log(`   block.timestamp: ${before} → ${after} (Δ ${after - before}s)`);
-console.log(`   ≈ ${(Number(after) / 86_400).toFixed(1)} ngày kể từ epoch`);
+console.log(`   ≈ ${(Number(after) / daySec).toFixed(1)} ngày kể từ epoch`);

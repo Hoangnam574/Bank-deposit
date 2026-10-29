@@ -30,7 +30,7 @@ export default function MaturityRing({ pct, matured, center }: Props) {
 
   return (
     <span className="relative inline-flex shrink-0" aria-hidden>
-      <svg width="46" height="46" viewBox="0 0 56 56">
+      <svg width="36" height="36" viewBox="0 0 56 56">
         {/* Track — xoay -90° để cung chạy từ đỉnh (12 giờ) */}
         <circle
           cx="28"

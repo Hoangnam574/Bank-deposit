@@ -108,9 +108,10 @@ const maturityAt = Number(deposit.maturityAt);
 console.log(`⏳ maturityAt = ${maturityAt} (UTC ${new Date(maturityAt * 1000).toISOString()})`);
 
 // Preview TẠI moment băng qua (deposit vẫn active).
+const daySeconds = Number(await core.DAY_SECONDS());
 await provider.request({
   method: "evm_increaseTime",
-  params: [Number(plan.tenorDays) * 24 * 3600 + 5],
+  params: [Number(deposit.maturityAt - deposit.startAt) + 5],
 });
 await provider.request({ method: "evm_mine", params: [] });
 

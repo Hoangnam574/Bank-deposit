@@ -82,6 +82,7 @@ export async function deployCommonFixture() {
   const savingCore = await ethers.deployContract("SavingCore", [
     await usdc.getAddress(),
     await vault.getAddress(),
+    86400,
   ]);
 
   await vault.connect(owner).setSavingCore(await savingCore.getAddress());

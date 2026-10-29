@@ -18,8 +18,9 @@
  * (format.ts) — floor như multiply-before-divide, không float accumulator.
  */
 
-import { fmtToken, SECONDS_PER_YEAR } from "@/lib/format";
+import { fmtToken } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
+import { useContractTime } from "@/providers/ContractsProvider";
 
 interface Props {
   /** Lãi dự kiến khi đáo hạn (pv.interest — bigint units, ×1e6 USDC) */
@@ -34,11 +35,13 @@ interface Props {
 
 export default function InterestTicker({ baseInterest, principal, aprBps, ticking }: Props) {
   const { t } = useLang();
+  const { daySeconds, yearSeconds } = useContractTime();
+
   /* Rate units/giây ở dải quanta ×1e6 — nguyên bigint, cùng công thức on-chain */
   const QUANTA = 1_000_000n; // 10^6 phần quanta cho mỗi nguyên unit
   const rateQuantaPerSec =
-    (principal * aprBps * QUANTA) / (10_000n * SECONDS_PER_YEAR);
-  const perDayUnits = (rateQuantaPerSec * 86_400n) / QUANTA;
+    (principal * aprBps * QUANTA) / (10_000n * BigInt(yearSeconds));
+  const perDayUnits = (rateQuantaPerSec * BigInt(daySeconds)) / QUANTA;
 
   return (
     <span className="inline-flex flex-col">

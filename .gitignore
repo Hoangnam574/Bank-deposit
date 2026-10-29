@@ -4,8 +4,12 @@ package-lock.json.bak
 
 # Secrets
 .env
+.env*
 .env.local
 .env.*.local
+backend/
+backend/.env*
+ac-hardhat-template-v2/.env*
 
 # Build / cache outputs
 artifacts/

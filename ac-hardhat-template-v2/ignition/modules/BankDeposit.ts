@@ -29,9 +29,12 @@ export default buildModule("BankDepositModule", (m) => {
   // 2) Vault — constructor(token, feeReceiver).
   const vault = m.contract("VaultManager", [usdc, feeReceiver]);
 
-  // 3) Core — constructor(token, vault). SavingCore đọc isPaused qua
+  // Tham số daySeconds (mặc định 86400 cho production/mainnet, 1 cho test)
+  const daySeconds = m.getParameter("daySeconds", 86400);
+
+  // 3) Core — constructor(token, vault, daySeconds). SavingCore đọc isPaused qua
   //    interface IVaultManager nên VÀO đây luôn sau khi Vault available.
-  const savingCore = m.contract("SavingCore", [usdc, vault]);
+  const savingCore = m.contract("SavingCore", [usdc, vault, daySeconds]);
 
   // 4) Wire: Vault lắng nghe SavingCore cho setPaused / owed accounting.
   m.call(vault, "setSavingCore", [savingCore]);

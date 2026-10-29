@@ -11,17 +11,16 @@ import type { ContractTransactionResponse } from "ethers";
 import StatusBadge from "@/components/StatusBadge";
 import NoDeploymentState from "@/components/NoDeploymentState";
 import VaultHealthGauge from "@/components/VaultHealthGauge";
-import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
+import { useContracts, useSignerContracts, useContractTime } from "@/providers/ContractsProvider";
 import { useWallet } from "@/providers/WalletProvider";import { useTx } from "@/hooks/useTx";
 import { fmtToken, formatBps, parseToken as parseTokenInput } from "@/lib/format";
 import type { PlanRow } from "@/components/PlanCard";
 import { useLang } from "@/lib/i18n";
 
-const EMERGENCY_DELAY_SECONDS = 7 * 86_400;
-
 export default function Admin() {
   const { contracts, hasDeployment } = useContracts();
   const signerC = useSignerContracts();
+  const { emergencyDelay } = useContractTime();
   const { address, hasWallet, getBrowser } = useWallet();
   const { state, run } = useTx();
   const { t } = useLang();
@@ -158,7 +157,7 @@ export default function Admin() {
     );
   }
 
-  const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + EMERGENCY_DELAY_SECONDS;
+  const emergencyUnlocked = paused && pauseAt !== null && nowSec >= pauseAt + emergencyDelay;
 
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 sm:px-6 lg:px-10 pb-16">
@@ -238,7 +237,9 @@ export default function Admin() {
               {t("admin.sysLabel")} {paused ? <strong className="text-err">{t("admin.paused")}</strong> : <strong className="text-ok">{t("admin.running")}</strong>}
               {paused && pauseAt !== null && !emergencyUnlocked && (
                 <span className="text-warn">
-                  {' '}· {t("admin.unlockIn", { h: Math.max(0, Math.ceil((pauseAt + EMERGENCY_DELAY_SECONDS - nowSec) / 3600)) })}
+                  {' '}· {pauseAt + emergencyDelay - nowSec < 3600
+                    ? `${Math.max(0, pauseAt + emergencyDelay - nowSec)}s`
+                    : t("admin.unlockIn", { h: Math.max(0, Math.ceil((pauseAt + emergencyDelay - nowSec) / 3600)) })}
                 </span>
               )}
             </span>

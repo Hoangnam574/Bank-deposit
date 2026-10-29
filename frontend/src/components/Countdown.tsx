@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { fmtCountdown, fmtDate } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
+import { useContractTime } from "@/providers/ContractsProvider";
 
 interface Props {
   targetSec: number | bigint;
@@ -16,18 +17,20 @@ interface Props {
 export default function Countdown({ targetSec, nowSec, showExact = true }: Props) {
   const [tick, setTick] = useState(0);
   const { t } = useLang();
+  const { daySeconds } = useContractTime();
+
   useEffect(() => {
     const t2 = window.setInterval(() => setTick((x) => x + 1), 1000);
     return () => window.clearInterval(t2);
   }, []);
   void tick; // chỉ cần render lại theo interval
 
-  const passed = Number(targetSec) <= nowSec;
+  const passed = Number(targetSec) <= (nowSec > 0 ? nowSec + tick : nowSec);
   return (
     <span className={passed ? "text-warn" : "text-subtle"}>
       {passed
         ? t("countdown.done")
-        : `${fmtCountdown(targetSec, nowSec + tick)}${showExact ? ` · ${fmtDate(targetSec)}` : ""}`}
+        : `${fmtCountdown(targetSec, nowSec + tick, daySeconds)}${showExact ? ` · ${fmtDate(targetSec)}` : ""}`}
     </span>
   );
 }
