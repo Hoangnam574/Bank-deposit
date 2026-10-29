@@ -32,7 +32,7 @@ export default function NetworkMenu({ compact }: { compact?: boolean }) {
         type="button"
         aria-label={t("chain.pillAria")}
         onClick={() => setOpen(true)}
-        className="cursor-pointer rounded-full hover:outline hover:outline-1 hover:outline-primary/50"
+        className="group inline-flex items-center cursor-pointer rounded-full transition-transform duration-150 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-info focus-visible:outline-offset-2"
       >
         <ChainPill chainId={chainId} compact={compact} />
       </button>
