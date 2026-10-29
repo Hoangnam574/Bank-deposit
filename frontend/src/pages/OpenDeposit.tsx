@@ -19,6 +19,7 @@ import { useTx } from "@/hooks/useTx";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
   fmtToken,
+  fmtTokenFixed,
   parseToken,
   previewInterestOnAmount,
   fmtDate,
@@ -219,6 +220,7 @@ export default function OpenDeposit() {
             id="amount-input"
             className="field num text-lg"
             inputMode="decimal"
+            autoComplete="off"
             placeholder={t("open.amountPh")}
             value={amountStr}
             onChange={(e) => setAmountStr(e.target.value)}
@@ -259,7 +261,7 @@ export default function OpenDeposit() {
               <div className="flex justify-between items-baseline">
                 <dt className="text-subtle">{t("open.sumInterest")}</dt>
                 <dd className="num text-ok text-base">
-                  +{fmtToken(previewInterestOnAmount(gpAmount, plan.tenorDays, plan.aprBps, BigInt(daySeconds), BigInt(yearSeconds)), 4)}
+                  +{fmtTokenFixed(previewInterestOnAmount(gpAmount, plan.tenorDays, plan.aprBps, BigInt(daySeconds), BigInt(yearSeconds)), 6)} USDC
                 </dd>
               </div>
               <div className="flex justify-between">
