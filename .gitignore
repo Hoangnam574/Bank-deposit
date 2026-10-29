@@ -40,8 +40,6 @@ skills/
 .claude/skills/
 .codex/skills/
 DESIGN.md
-docs/demo-script.md
-docs/review-script.md
 temp/
 EXECUTION_PLAN.md
 implementation_plan.md
