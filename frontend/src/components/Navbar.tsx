@@ -9,7 +9,7 @@
  */
 import { useEffect, useState, type ComponentType } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Landmark, Droplet, ShieldCheck, Home, PlusCircle, Wallet, Languages, Menu, X, Check } from "lucide-react";
+import { Landmark, Droplet, ShieldCheck, Home, PlusCircle, Wallet, Languages, Menu, X, LogOut } from "lucide-react";
 import type { ContractTransactionResponse } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
 import { useContracts, useSignerContracts } from "@/providers/ContractsProvider";
@@ -134,15 +134,6 @@ export default function Navbar() {
             </nav>
 
             <div className="ml-auto flex items-center gap-2 flex-nowrap justify-end">
-              <NetworkMenu />
-              <button
-                type="button"
-                aria-label={t("nav.langAria")}
-                onClick={() => setLang(lang === "vi" ? "en" : "vi")}
-                className="btn btn-outline !py-1.5 !px-2.5 xl:!px-3 text-xs hidden lg:inline-flex items-center gap-1 shrink-0"
-              >
-                <Languages size={14} /> {lang === "vi" ? "EN" : "VI"}
-              </button>
               {isAdmin && (
                 <span className="inline-flex items-center gap-1 rounded-md border border-ok/40 bg-ok/10 px-2 py-0.5 text-[11px] font-semibold text-ok whitespace-nowrap">
                   <ShieldCheck size={12} /> Admin
@@ -163,94 +154,124 @@ export default function Navbar() {
                 </button>
               )}
               {address ? (
-                <div className="flex items-center gap-2 whitespace-nowrap">
-                  <span
-                    className="num text-sm"
-                    aria-label={demo
-                      ? t("nav.demoTitle", { i: demo.index, role: demo.role })
-                      : t("nav.extTitle")}
-                  >
-                    {address.slice(0, 6)}…{address.slice(-4)}
-                    {demo && <span className="text-xs text-subtle hidden xl:inline"> (#{demo.index})</span>}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={disconnect}
-                    aria-label={t("nav.disconnect")}
-                    className="btn btn-outline !py-1.5 !px-2 xl:!px-2.5 text-xs inline-flex items-center shrink-0"
-                  >
-                    <X size={13} /> <span className="hidden xl:inline">{t("nav.disconnect")}</span>
-                  </button>
+                <div
+                  className="num text-xs font-medium px-2.5 py-1.5 rounded-md bg-panel border border-line text-txt whitespace-nowrap"
+                  aria-label={demo
+                    ? t("nav.demoTitle", { i: demo.index, role: demo.role })
+                    : t("nav.extTitle")}
+                >
+                  {address.slice(0, 6)}…{address.slice(-4)}
+                  {demo && <span className="text-xs text-subtle hidden xl:inline"> (#{demo.index})</span>}
                 </div>
               ) : (
-                <button type="button" onClick={() => void connect()} disabled={connecting} className="btn btn-cta !py-1.5 shrink-0">
+                <button type="button" onClick={() => void connect()} disabled={connecting} className="btn btn-cta !py-1.5 shrink-0 text-xs">
                   {connecting ? t("nav.connecting") : t("nav.connect")}
                 </button>
               )}
-              {/* ☰ menu — kiểu Binance: nav inline ẩn ở vùng hẹp (side panel MetaMask) →
-                  các mục điều hướng + ngôn ngữ gom về menu dropdown này */}
+              {/* ☰ menu — chứa chọn mạng, ngôn ngữ, đăng xuất và nav link (khi hẹp) */}
               <button
                 type="button"
                 aria-label={t("nav.menuAria")}
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen((v) => !v)}
-                className="btn btn-cta !py-1.5 !px-2.5 hidden sm:inline-flex lg:hidden shrink-0 items-center"
+                className="btn btn-outline !py-1.5 !px-2.5 inline-flex shrink-0 items-center justify-center cursor-pointer"
               >
                 {menuOpen ? <X size={16} /> : <Menu size={16} />}
               </button>
             </div>
           </div>
 
-          {/* ── Dropdown ☰ — nav + ngôn ngữ (nằm trong sticky header, tự theo scroll) ── */}
+          {/* ── Dropdown ☰ — nav (mobile/tablet) + chọn mạng + ngôn ngữ + đăng xuất ── */}
           {menuOpen && (
             <>
-              {/* Backdrop trong suốt — click ngoài đóng; z-30 dưới header (z-40) */}
-              <div className="fixed inset-0 z-30 hidden sm:block" onClick={() => setMenuOpen(false)} />
+              {/* Backdrop trong suốt — click ngoài đóng; z-40 dưới modal z-[60] */}
+              <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setMenuOpen(false)} />
               <div
                 role="menu"
                 aria-label={t("nav.mainAria")}
-                className="absolute right-4 sm:right-6 top-full w-60 !rounded-lg border border-line bg-bg shadow-xl py-1.5 z-50"
+                className="absolute right-4 sm:right-6 lg:right-10 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-card shadow-2xl py-2 z-50 text-txt"
               >
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === "/"}
-                    onClick={() => setMenuOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer transition-colors duration-150 ${
-                        isActive ? "text-primary bg-primary/10 font-semibold" : "text-subtle hover:text-txt hover:bg-panel"
-                      }`
-                    }
-                  >
-                    <item.icon size={17} />
-                    {t(item.key)}
-                  </NavLink>
-                ))}
-                <div className="my-1.5 border-t border-line" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => { setLang("vi"); setMenuOpen(false); }}
-                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors duration-150 hover:bg-panel"
-                >
-                  <span className={lang === "vi" ? "text-primary font-semibold" : "text-subtle"}>Tiếng Việt</span>
-                  {lang === "vi" && <Check size={15} className="text-primary" />}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => { setLang("en"); setMenuOpen(false); }}
-                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors duration-150 hover:bg-panel"
-                >
-                  <span className={lang === "en" ? "text-primary font-semibold" : "text-subtle"}>English</span>
-                  {lang === "en" && <Check size={15} className="text-primary" />}
-                </button>
+                {/* Nav links khi ở tablet / màn hẹp (lg:hidden) */}
+                <div className="lg:hidden pb-1">
+                  {navItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to === "/"}
+                      onClick={() => setMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2 text-sm cursor-pointer transition-colors duration-150 ${
+                          isActive ? "text-primary bg-primary/10 font-semibold" : "text-subtle hover:text-txt hover:bg-panel"
+                        }`
+                      }
+                    >
+                      <item.icon size={16} />
+                      {t(item.key)}
+                    </NavLink>
+                  ))}
+                  <div className="my-1.5 border-t border-line" />
+                </div>
+
+                {/* ── Chọn mạng ── */}
+                <div className="px-4 py-2 flex items-center justify-between gap-2">
+                  <span className="text-xs text-subtle font-medium">{t("chain.modalTitle")}</span>
+                  <NetworkMenu />
+                </div>
+
+                <div className="my-1 border-t border-line" />
+
+                {/* ── Ngôn ngữ ── */}
+                <div className="px-4 py-2 flex items-center justify-between gap-2">
+                  <span className="text-xs text-subtle font-medium flex items-center gap-1.5">
+                    <Languages size={14} className="text-muted" />
+                    {lang === "vi" ? "Ngôn ngữ" : "Language"}
+                  </span>
+                  <div className="flex items-center gap-1 bg-panel rounded-md p-0.5 border border-line text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setLang("vi")}
+                      className={`px-2 py-0.5 rounded transition-colors text-xs font-medium cursor-pointer ${
+                        lang === "vi" ? "bg-primary text-ink font-semibold" : "text-subtle hover:text-txt"
+                      }`}
+                    >
+                      VI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLang("en")}
+                      className={`px-2 py-0.5 rounded transition-colors text-xs font-medium cursor-pointer ${
+                        lang === "en" ? "bg-primary text-ink font-semibold" : "text-subtle hover:text-txt"
+                      }`}
+                    >
+                      EN
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── Đăng xuất ── */}
+                {address && (
+                  <div className="pt-2 px-2 border-t border-line mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        disconnect();
+                        setMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-err hover:bg-err/10 transition-colors cursor-pointer text-left"
+                    >
+                      <LogOut size={14} />
+                      <span>{t("nav.disconnect")}</span>
+                      <span className="ml-auto font-mono text-[11px] opacity-70">
+                        {address.slice(0, 6)}…{address.slice(-4)}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
 
-          {/* ── MOBILE <sm: header gọn — logo + chain pill compact + faucet + ví ── */}
+          {/* ── MOBILE <sm: header gọn — logo + faucet + ví + hamburger ── */}
           <div className="flex sm:hidden items-center justify-between gap-1.5 py-2">
             <Link to="/" className="flex items-center gap-1.5 cursor-pointer shrink-0">
               <span className="grid place-items-center w-8 h-8 rounded-md bg-primary">
@@ -262,15 +283,6 @@ export default function Navbar() {
             </Link>
 
             <div className="flex items-center gap-1.5 min-w-0">
-              <NetworkMenu compact />
-              <button
-                type="button"
-                aria-label={t("nav.langAria")}
-                onClick={() => setLang(lang === "vi" ? "en" : "vi")}
-                className="btn btn-outline !px-2 !py-1.5 text-xs shrink-0"
-              >
-                {lang === "vi" ? "EN" : "VI"}
-              </button>
               {isTestChain && address && (
                 <button
                   type="button"
@@ -283,14 +295,9 @@ export default function Navbar() {
                 </button>
               )}
               {address ? (
-                <button
-                  type="button"
-                  onClick={disconnect}
-                  aria-label={t("nav.disconnect")}
-                  className="btn btn-outline !px-2 !py-1.5 text-xs shrink-0"
-                >
+                <span className="btn btn-outline !px-2 !py-1.5 text-xs num shrink-0">
                   {address.slice(0, 5)}…{address.slice(-3)}
-                </button>
+                </span>
               ) : (
                 <button
                   type="button"
@@ -301,6 +308,15 @@ export default function Navbar() {
                   {connecting ? t("nav.connecting") : t("nav.connectShort")}
                 </button>
               )}
+              <button
+                type="button"
+                aria-label={t("nav.menuAria")}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((v) => !v)}
+                className="btn btn-outline !px-2 !py-1.5 shrink-0 inline-flex items-center justify-center cursor-pointer"
+              >
+                {menuOpen ? <X size={16} /> : <Menu size={16} />}
+              </button>
             </div>
           </div>
           {error && <div className="pb-2 text-xs text-err sm:hidden">{error}</div>}
