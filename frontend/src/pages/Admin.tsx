@@ -43,6 +43,7 @@ export default function Admin() {
   /* Form for actions */
   const [newApr, setNewApr] = useState<{ id: number; value: string }>({ id: 0, value: "" });
   const [vaultAmount, setVaultAmount] = useState<string>("");
+  const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const pending = state.status === "pending";
   const isOwner = owner !== null && address !== null && owner.toLowerCase() === address.toLowerCase();
@@ -96,13 +97,20 @@ export default function Admin() {
     };
   }, [contracts, hasDeployment, state.status]);
 
-  const call = (label: string, fn: (c: NonNullable<typeof signerC>) => Promise<unknown>): void => {
+  const call = (label: string, actionKey: string, fn: (c: NonNullable<typeof signerC>) => Promise<unknown>): void => {
     if (!signerC) return;
-    void run(label, async () => (await fn(signerC)) as unknown as ContractTransactionResponse);
+    setActiveAction(actionKey);
+    void run(label, async () => {
+      try {
+        return (await fn(signerC)) as unknown as ContractTransactionResponse;
+      } finally {
+        setActiveAction(null);
+      }
+    });
   };
 
   const createPlan = () => {
-    call(t("admin.txCreate"), async (c) => {
+    call(t("admin.txCreate"), "createPlan", async (c) => {
       const tenor = Number(fTenor);
       const apr = Number(fApr);
       const min = fMin ? parseTokenInput(fMin) : 0n;
@@ -114,17 +122,17 @@ export default function Admin() {
   };
 
   const updateApr = (planId: number) => {
-    call(t("admin.txUpdateApr"), async (c) => c.core.updatePlan(planId, Number(newApr.value)));
+    call(t("admin.txUpdateApr"), `updateApr-${planId}`, async (c) => c.core.updatePlan(planId, Number(newApr.value)));
   };
 
   const togglePlan = (planId: number, nextEnabled: boolean) => {
-    call(nextEnabled ? t("admin.txEnable") : t("admin.txDisable"), async (c) =>
+    call(nextEnabled ? t("admin.txEnable") : t("admin.txDisable"), `togglePlan-${planId}`, async (c) =>
       c.core.setPlanEnabled(planId, nextEnabled),
     );
   };
 
   const fundVault = () => {
-    call(t("admin.txFund"), async (c) => {
+    call(t("admin.txFund"), "fundVault", async (c) => {
       const amt = parseTokenInput(vaultAmount);
       if (amt <= 0n) throw new Error(t("admin.txNoAmount"));
       await c.usdc.approve(c.vault.target, amt); // approve trước (2 tx tất nhiên — chạy trong prompt 2 giao dịch)
@@ -133,11 +141,11 @@ export default function Admin() {
   };
 
   const withdrawVault = () => {
-    call(t("admin.txWithdraw"), async (c) => c.vault.withdrawVault(parseTokenInput(vaultAmount)));
+    call(t("admin.txWithdraw"), "withdrawVault", async (c) => c.vault.withdrawVault(parseTokenInput(vaultAmount)));
   };
 
   const pauseToggle = (nextPause: boolean) => {
-    call(nextPause ? t("admin.txPause") : t("admin.txUnpause"), async (c) => (nextPause ? c.vault.pause() : c.vault.unpause()));
+    call(nextPause ? t("admin.txPause") : t("admin.txUnpause"), "pauseToggle", async (c) => (nextPause ? c.vault.pause() : c.vault.unpause()));
   };
 
   if (!hasWallet) {
@@ -244,8 +252,14 @@ export default function Admin() {
               )}
             </span>
             {isOwner && (
-              <button type="button" className={`btn ${paused ? "btn-cta" : "btn-danger"} ml-auto`} onClick={() => pauseToggle(!paused)} disabled={pending}>
-                {paused ? t("admin.btnUnpause") : t("admin.btnPause")}
+              <button
+                type="button"
+                className={`btn ${paused ? "btn-cta" : "btn-danger"} ml-auto inline-flex items-center gap-1.5`}
+                onClick={() => pauseToggle(!paused)}
+                disabled={pending}
+              >
+                {activeAction === "pauseToggle" && <Loader2 size={15} className="animate-spin shrink-0" />}
+                <span>{paused ? t("admin.btnUnpause") : t("admin.btnPause")}</span>
               </button>
             )}
           </div>
@@ -287,19 +301,21 @@ export default function Admin() {
                       />
                       <button
                         type="button"
-                        className="btn btn-outline !py-1 !px-3 text-xs"
+                        className="btn btn-outline !py-1 !px-3 text-xs inline-flex items-center gap-1.5"
                         disabled={pending}
                         onClick={() => updateApr(p.id)}
                       >
-                        {t("admin.btnUpdate")}
+                        {activeAction === `updateApr-${p.id}` && <Loader2 size={13} className="animate-spin shrink-0" />}
+                        <span>{t("admin.btnUpdate")}</span>
                       </button>
                       <button
                         type="button"
-                        className="btn btn-outline !py-1 !px-3 text-xs"
+                        className="btn btn-outline !py-1 !px-3 text-xs inline-flex items-center gap-1.5"
                         disabled={pending}
                         onClick={() => togglePlan(p.id, !p.enabled)}
                       >
-                        {p.enabled ? t("admin.btnDisable") : t("admin.btnEnable")}
+                        {activeAction === `togglePlan-${p.id}` && <Loader2 size={13} className="animate-spin shrink-0" />}
+                        <span>{p.enabled ? t("admin.btnDisable") : t("admin.btnEnable")}</span>
                       </button>
                     </div>
                   )}
@@ -318,8 +334,14 @@ export default function Admin() {
                     <Field label={t("admin.fMin")} value={fMin} onChange={setFMin} placeholder="100" />
                     <Field label={t("admin.fMax")} value={fMax} onChange={setFMax} placeholder="50000" />
                   </div>
-                  <button type="button" className="btn btn-cta mt-3" disabled={pending} onClick={createPlan}>
-                    {t("admin.btnCreate")}
+                  <button
+                    type="button"
+                    className="btn btn-cta mt-3 inline-flex items-center gap-1.5"
+                    disabled={pending}
+                    onClick={createPlan}
+                  >
+                    {activeAction === "createPlan" && <Loader2 size={15} className="animate-spin shrink-0" />}
+                    <span>{t("admin.btnCreate")}</span>
                   </button>
                 </div>
 
@@ -341,17 +363,23 @@ export default function Admin() {
                         onChange={(e) => setVaultAmount(e.target.value)}
                       />
                     </div>
-                    <button type="button" className="btn btn-cta inline-flex items-center justify-center gap-2" disabled={pending || !vaultAmount} onClick={fundVault}>
-                      {pending && <Loader2 size={15} className="animate-spin shrink-0" />}
+                    <button
+                      type="button"
+                      className="btn btn-cta inline-flex items-center justify-center gap-2"
+                      disabled={pending || !vaultAmount}
+                      onClick={fundVault}
+                    >
+                      {activeAction === "fundVault" && <Loader2 size={15} className="animate-spin shrink-0" />}
                       <span>{t("admin.btnFund")}</span>
                     </button>
                     <button
                       type="button"
-                      className="btn btn-outline"
+                      className="btn btn-outline inline-flex items-center justify-center gap-2"
                       disabled={pending || !vaultAmount}
                       onClick={() => (available !== null && parseTokenInput(vaultAmount) <= available ? withdrawVault() : undefined)}
                     >
-                      {t("admin.btnWithdraw")}
+                      {activeAction === "withdrawVault" && <Loader2 size={15} className="animate-spin shrink-0" />}
+                      <span>{t("admin.btnWithdraw")}</span>
                     </button>
                   </div>
                   {available !== null && vaultAmount && parseTokenInput(vaultAmount) > available && (
